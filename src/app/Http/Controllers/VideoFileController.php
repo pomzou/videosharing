@@ -2,63 +2,57 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\VideoFile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use Aws\S3\S3Client;
 
 class VideoFileController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         return view('videos.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
-    }
+        // バリデーション
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'video' => 'required|file|mimes:mp4,avi,mov|max:102400', // 100MB制限
+            'privacy' => 'required|in:public,private',
+        ]);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+        try {
+            // ファイルの取得
+            $file = $request->file('video');
+            $originalName = $file->getClientOriginalName();
+            $fileName = time() . '_' . $file->hashName();
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
+            // S3にアップロード
+            $s3Path = 'videos/' . $fileName;
+            Storage::disk('s3')->put($s3Path, file_get_contents($file));
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+            // データベースに保存
+            $videoFile = VideoFile::create([
+                'user_id' => Auth::id(),
+                'title' => $request->title,
+                'description' => $request->description,
+                'file_name' => $fileName,
+                'original_name' => $originalName,
+                'mime_type' => $file->getMimeType(),
+                'file_size' => $file->getSize(),
+                's3_path' => $s3Path,
+                'privacy' => $request->privacy,
+            ]);
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+            return redirect()->route('dashboard')
+                ->with('success', 'Video uploaded successfully.');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to upload video. ' . $e->getMessage());
+        }
     }
 }

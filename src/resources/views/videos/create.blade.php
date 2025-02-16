@@ -15,14 +15,14 @@
                         <!-- Title -->
                         <div>
                             <x-input-label for="title" :value="__('Title')" />
-                            <x-text-input id="title" class="block mt-1 w-full" type="text" name="title" :value="old('title')" required autofocus />
+                            <x-text-input id="title" class="block mt-1 w-full px-4 py-2 border border-gray-400 rounded-md bg-gray-50 text-gray-700 outline-none" type="text" name="title" :value="old('title')" required autofocus />
                             <x-input-error :messages="$errors->get('title')" class="mt-2" />
                         </div>
 
                         <!-- Description -->
                         <div>
                             <x-input-label for="description" :value="__('Description')" />
-                            <textarea id="description" name="description" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" rows="3">{{ old('description') }}</textarea>
+                            <textarea id="description" name="description" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 border border-gray-400 rounded-md bg-gray-50 text-gray-700 outline-none" rows="3">{{ old('description') }}</textarea>
                             <x-input-error :messages="$errors->get('description')" class="mt-2" />
                         </div>
 
@@ -39,7 +39,7 @@
                         <!-- Privacy Settings -->
                         <div>
                             <x-input-label for="privacy" :value="__('Privacy')" />
-                            <select id="privacy" name="privacy" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                            <select id="privacy" name="privacy" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 px-4 py-2 border border-gray-400 rounded-md bg-gray-50 text-gray-700 outline-none">
                                 <option value="public">Public</option>
                                 <option value="private">Private</option>
                             </select>
