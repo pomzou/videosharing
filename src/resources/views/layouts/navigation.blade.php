@@ -17,6 +17,9 @@
                     <x-nav-link :href="route('videos.create')" :active="request()->routeIs('videos.create')">
                         {{ __('Upload Video') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('videos.index')" :active="request()->routeIs('videos.index')">
+                        {{ __('My Videos') }}
+                    </x-nav-link>
                 </div>
 
             <!-- Settings Dropdown -->

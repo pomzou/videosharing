@@ -55,4 +55,55 @@ class VideoFileController extends Controller
             return back()->with('error', 'Failed to upload video. ' . $e->getMessage());
         }
     }
+
+    public function generateSignedUrl(VideoFile $videoFile)
+    {
+        // ファイルの所有者かプライバシー設定をチェック
+        if ($videoFile->user_id !== Auth::id() && $videoFile->privacy === 'private') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        try {
+            // S3クライアントの作成
+            $s3Client = new S3Client([
+                'version' => 'latest',
+                'region'  => config('filesystems.disks.s3.region'),
+                'credentials' => [
+                    'key'    => config('filesystems.disks.s3.key'),
+                    'secret' => config('filesystems.disks.s3.secret'),
+                ],
+            ]);
+
+            // 署名付きURLの生成（24時間有効）
+            $cmd = $s3Client->getCommand('GetObject', [
+                'Bucket' => config('filesystems.disks.s3.bucket'),
+                'Key'    => $videoFile->s3_path
+            ]);
+
+            $request = $s3Client->createPresignedRequest($cmd, '+24 hours');
+            $signedUrl = (string) $request->getUri();
+
+            // URL有効期限を更新
+            $videoFile->update([
+                'url_expires_at' => now()->addHours(24)
+            ]);
+
+            return response()->json([
+                'url' => $signedUrl,
+                'expires_at' => $videoFile->url_expires_at
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    // アップロードされた動画一覧を表示
+    public function index()
+    {
+        $videos = VideoFile::where('user_id', Auth::id())
+                          ->orderBy('created_at', 'desc')
+                          ->get();
+
+        return view('videos.index', compact('videos'));
+    }
 }

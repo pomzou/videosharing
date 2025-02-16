@@ -23,6 +23,10 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/videos/create', [VideoFileController::class, 'create'])->name('videos.create');
     Route::post('/videos', [VideoFileController::class, 'store'])->name('videos.store');
+
+    Route::get('/videos', [VideoFileController::class, 'index'])->name('videos.index');
+    Route::get('/videos/{videoFile}/signed-url', [VideoFileController::class, 'generateSignedUrl'])
+         ->name('videos.signed-url');
 });
 
 require __DIR__.'/auth.php';
