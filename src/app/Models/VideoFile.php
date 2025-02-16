@@ -35,4 +35,14 @@ class VideoFile extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function shares()
+    {
+        return $this->hasMany(VideoShare::class);
+    }
+
+    public function accessLogs()
+    {
+        return $this->hasMany(AccessLog::class);
+    }
 }
