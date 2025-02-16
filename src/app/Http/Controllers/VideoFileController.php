@@ -58,13 +58,11 @@ class VideoFileController extends Controller
 
     public function generateSignedUrl(VideoFile $videoFile)
     {
-        // ファイルの所有者かプライバシー設定をチェック
         if ($videoFile->user_id !== Auth::id() && $videoFile->privacy === 'private') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         try {
-            // S3クライアントの作成
             $s3Client = new S3Client([
                 'version' => 'latest',
                 'region'  => config('filesystems.disks.s3.region'),
@@ -74,7 +72,8 @@ class VideoFileController extends Controller
                 ],
             ]);
 
-            // 署名付きURLの生成（24時間有効）
+            $expiresAt = now()->addHours(24);
+
             $cmd = $s3Client->getCommand('GetObject', [
                 'Bucket' => config('filesystems.disks.s3.bucket'),
                 'Key'    => $videoFile->s3_path
@@ -83,14 +82,13 @@ class VideoFileController extends Controller
             $request = $s3Client->createPresignedRequest($cmd, '+24 hours');
             $signedUrl = (string) $request->getUri();
 
-            // URL有効期限を更新
             $videoFile->update([
-                'url_expires_at' => now()->addHours(24)
+                'url_expires_at' => $expiresAt
             ]);
 
             return response()->json([
                 'url' => $signedUrl,
-                'expires_at' => $videoFile->url_expires_at
+                'expires_at' => $expiresAt->toISOString()
             ]);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
