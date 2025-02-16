@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Aws\S3\S3Client;
+use Illuminate\Support\Facades\Log;
 
 class VideoFileController extends Controller
 {
@@ -95,13 +96,46 @@ class VideoFileController extends Controller
         }
     }
 
-    // アップロードされた動画一覧を表示
     public function index()
     {
         $videos = VideoFile::where('user_id', Auth::id())
                           ->orderBy('created_at', 'desc')
-                          ->get();
+                          ->get()
+                          ->map(function ($video) {
+                              // 有効な署名付きURLがある場合は更新
+                              if ($video->url_expires_at && now()->lt($video->url_expires_at)) {
+                                  $this->refreshSignedUrl($video);
+                              }
+                              return $video;
+                          });
 
         return view('videos.index', compact('videos'));
+    }
+
+    private function refreshSignedUrl($video)
+    {
+        try {
+            $s3Client = new S3Client([
+                'version' => 'latest',
+                'region'  => config('filesystems.disks.s3.region'),
+                'credentials' => [
+                    'key'    => config('filesystems.disks.s3.key'),
+                    'secret' => config('filesystems.disks.s3.secret'),
+                ],
+            ]);
+
+            $cmd = $s3Client->getCommand('GetObject', [
+                'Bucket' => config('filesystems.disks.s3.bucket'),
+                'Key'    => $video->s3_path
+            ]);
+
+            $request = $s3Client->createPresignedRequest($cmd, '+24 hours');
+            $video->current_signed_url = (string) $request->getUri();
+
+            return $video;
+        } catch (\Exception $e) {
+            $log = Log::error('Failed to refresh signed URL', ['error' => $e->getMessage()]);
+            return $video;
+        }
     }
 }

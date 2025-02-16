@@ -23,11 +23,12 @@ class VideoFile extends Model
         'url_expires_at'
     ];
 
-    protected $dates = [
-        'url_expires_at',
-        'created_at',
-        'updated_at',
-        'deleted_at'
+    // 日付として扱うカラムを指定
+    protected $casts = [
+        'url_expires_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime'
     ];
 
     public function user()
