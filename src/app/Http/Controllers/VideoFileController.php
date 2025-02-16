@@ -51,7 +51,6 @@ class VideoFileController extends Controller
 
             return redirect()->route('dashboard')
                 ->with('success', 'Video uploaded successfully.');
-
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to upload video. ' . $e->getMessage());
         }
@@ -59,7 +58,7 @@ class VideoFileController extends Controller
 
     public function generateSignedUrl(VideoFile $videoFile)
     {
-        if ($videoFile->user_id !== Auth::id() && $videoFile->privacy === 'private') {
+        if ($videoFile->user_id !== Auth::id()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -73,8 +72,6 @@ class VideoFileController extends Controller
                 ],
             ]);
 
-            $expiresAt = now()->addHours(24);
-
             $cmd = $s3Client->getCommand('GetObject', [
                 'Bucket' => config('filesystems.disks.s3.bucket'),
                 'Key'    => $videoFile->s3_path
@@ -83,15 +80,20 @@ class VideoFileController extends Controller
             $request = $s3Client->createPresignedRequest($cmd, '+24 hours');
             $signedUrl = (string) $request->getUri();
 
+            // URL有効期限を更新
             $videoFile->update([
-                'url_expires_at' => $expiresAt
+                'url_expires_at' => now()->addHours(24)
             ]);
 
             return response()->json([
                 'url' => $signedUrl,
-                'expires_at' => $expiresAt->toISOString()
+                'expires_at' => $videoFile->url_expires_at->toISOString()
             ]);
         } catch (\Exception $e) {
+            $log = Log::error('Failed to generate signed URL', [
+                'video_id' => $videoFile->id,
+                'error' => $e->getMessage()
+            ]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -99,15 +101,39 @@ class VideoFileController extends Controller
     public function index()
     {
         $videos = VideoFile::where('user_id', Auth::id())
-                          ->orderBy('created_at', 'desc')
-                          ->get()
-                          ->map(function ($video) {
-                              // 有効な署名付きURLがある場合は更新
-                              if ($video->url_expires_at && now()->lt($video->url_expires_at)) {
-                                  $this->refreshSignedUrl($video);
-                              }
-                              return $video;
-                          });
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 各ビデオに対して署名付きURLを生成
+        foreach ($videos as $video) {
+            try {
+                $s3Client = new S3Client([
+                    'version' => 'latest',
+                    'region'  => config('filesystems.disks.s3.region'),
+                    'credentials' => [
+                        'key'    => config('filesystems.disks.s3.key'),
+                        'secret' => config('filesystems.disks.s3.secret'),
+                    ],
+                ]);
+
+                // プレビュー用とダウンロード用の署名付きURL生成
+                $cmd = $s3Client->getCommand('GetObject', [
+                    'Bucket' => config('filesystems.disks.s3.bucket'),
+                    'Key'    => $video->s3_path
+                ]);
+
+                $video->preview_url = (string) $s3Client->createPresignedRequest($cmd, '+1 hour')->getUri();
+
+                if ($video->url_expires_at && $video->url_expires_at->isFuture()) {
+                    $video->current_signed_url = (string) $s3Client->createPresignedRequest($cmd, '+24 hours')->getUri();
+                }
+            } catch (\Exception $e) {
+                $log = Log::error('Failed to generate signed URL', [
+                    'video_id' => $video->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
 
         return view('videos.index', compact('videos'));
     }
@@ -136,6 +162,48 @@ class VideoFileController extends Controller
         } catch (\Exception $e) {
             $log = Log::error('Failed to refresh signed URL', ['error' => $e->getMessage()]);
             return $video;
+        }
+    }
+
+    public function destroy(VideoFile $videoFile)
+    {
+        try {
+            // 所有者チェック
+            if ($videoFile->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // S3から動画を削除
+            try {
+                Storage::disk('s3')->delete($videoFile->s3_path);
+            } catch (\Exception $e) {
+                $log = Log::error('Failed to delete file from S3', [
+                    'file_path' => $videoFile->s3_path,
+                    'error' => $e->getMessage()
+                ]);
+                return response()->json(['error' => 'Failed to delete video file'], 500);
+            }
+
+            // データベースからレコードを削除
+            $videoFile->delete();
+
+            // 操作ログを記録
+            $log = Log::error('Video deleted successfully', [
+                'user_id' => Auth::id(),
+                'video_id' => $videoFile->id,
+                'file_path' => $videoFile->s3_path
+            ]);
+
+            return response()->json([
+                'message' => 'Video deleted successfully',
+                'status' => 'success'
+            ]);
+        } catch (\Exception $e) {
+            $log = Log::error('Failed to delete video', [
+                'video_id' => $videoFile->id,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['error' => 'Failed to delete video'], 500);
         }
     }
 }

@@ -9,23 +9,19 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
-                    @if($videos->isEmpty())
+                    @if ($videos->isEmpty())
                         <p class="text-gray-500">No videos uploaded yet.</p>
                     @else
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            @foreach($videos as $video)
+                            @foreach ($videos as $video)
                                 <div class="bg-white rounded-lg shadow-md overflow-hidden">
                                     <!-- Video Preview -->
                                     <div class="relative pt-[56.25%]">
-                                        <video
-                                            id="video-{{ $video->id }}"
-                                            class="absolute top-0 left-0 w-full h-full object-cover"
-                                            controls
-                                            preload="metadata"
-                                            poster="{{ asset('images/video-placeholder.png') }}"
-                                        >
-                                            @if($video->current_signed_url)
-                                                <source src="{{ $video->current_signed_url }}" type="{{ $video->mime_type }}">
+                                        <video id="video-{{ $video->id }}"
+                                            class="absolute top-0 left-0 w-full h-full object-cover" controls
+                                            preload="metadata">
+                                            @if ($video->preview_url)
+                                                <source src="{{ $video->preview_url }}" type="{{ $video->mime_type }}">
                                             @endif
                                             Your browser does not support the video tag.
                                         </video>
@@ -40,57 +36,122 @@
 
                                         <div class="space-y-2">
                                             <div class="flex items-center text-sm text-gray-500">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10H9m12-7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h14a2 2 0 002-2v-6z"/>
+                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M9 7h6m0 10H9m12-7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h14a2 2 0 002-2v-6z" />
                                                 </svg>
                                                 <span>{{ number_format($video->file_size / 1024 / 1024, 2) }} MB</span>
                                             </div>
                                             <div class="flex items-center text-sm text-gray-500">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
                                                 <span>{{ $video->created_at->diffForHumans() }}</span>
                                             </div>
                                             <div class="flex items-center text-sm text-gray-500">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                                 </svg>
                                                 <span>{{ ucfirst($video->privacy) }}</span>
                                             </div>
                                         </div>
 
+                                        <!-- Video Controls -->
+                                        <div class="flex justify-between items-center mt-4">
+                                            <div class="space-x-2">
+                                                <!-- Delete Button -->
+                                                <button onclick="confirmDelete({{ $video->id }})"
+                                                    class="px-3 py-1 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                                    Delete Video
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Delete Confirmation Modal -->
+                                        <div id="delete-modal-{{ $video->id }}"
+                                            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                                            <div
+                                                class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                                                <div class="mt-3 text-center">
+                                                    <div
+                                                        class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                                                        <svg class="h-6 w-6 text-red-600" fill="none"
+                                                            stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                        </svg>
+                                                    </div>
+                                                    <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">
+                                                        Permanent Delete</h3>
+                                                    <div class="mt-2 px-7 py-3">
+                                                        <p class="text-sm text-gray-500">
+                                                            This will permanently delete this video from both the
+                                                            website and storage. This action cannot be undone and the
+                                                            video cannot be recovered.
+                                                        </p>
+                                                    </div>
+                                                    <div class="items-center px-4 py-3">
+                                                        <button onclick="deleteVideo({{ $video->id }})"
+                                                            class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                                                            Permanently Delete
+                                                        </button>
+                                                        <button
+                                                            onclick="document.getElementById('delete-modal-{{ $video->id }}').classList.add('hidden')"
+                                                            class="ml-3 px-4 py-2 bg-gray-100 text-gray-700 text-base font-medium rounded-md shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <!-- Download Link Section -->
                                         <div class="space-y-3">
-                                            @if($video->url_expires_at && $video->url_expires_at->isFuture())
+                                            @if ($video->url_expires_at && $video->url_expires_at->isFuture())
                                                 <div id="timer-{{ $video->id }}" class="text-sm text-gray-600">
-                                                    <p class="font-medium">Link expires: {{ $video->url_expires_at->diffForHumans() }}</p>
-                                                    <p>Time remaining: <span class="text-indigo-600 font-medium"></span></p>
+                                                    <p class="font-medium">Link expires:
+                                                        {{ $video->url_expires_at->diffForHumans() }}</p>
+                                                    <p>Time remaining: <span class="text-indigo-600 font-medium"></span>
+                                                    </p>
                                                 </div>
                                                 <div id="url-{{ $video->id }}" class="space-y-2">
                                                     <div class="flex items-center gap-2">
-                                                        <input
-                                                            type="text"
-                                                            id="url-input-{{ $video->id }}"
+                                                        <input type="text" id="url-input-{{ $video->id }}"
                                                             value="{{ $video->current_signed_url }}"
                                                             class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                            readonly
-                                                        >
-                                                        <button
-                                                            onclick="copyUrl({{ $video->id }})"
-                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                                                        >
+                                                            readonly>
+                                                        <button onclick="copyUrl({{ $video->id }})"
+                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                                                             Copy
                                                         </button>
                                                     </div>
                                                 </div>
                                             @else
-                                                <button
-                                                    id="generate-btn-{{ $video->id }}"
+                                                <button id="generate-btn-{{ $video->id }}"
                                                     onclick="generateSignedUrl({{ $video->id }})"
-                                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                                >
+                                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                                     Generate Download Link
                                                 </button>
+                                                <div id="url-{{ $video->id }}" class="space-y-2 hidden">
+                                                    <div class="flex items-center gap-2">
+                                                        <input type="text" id="url-input-{{ $video->id }}"
+                                                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                            readonly>
+                                                        <button onclick="copyUrl({{ $video->id }})"
+                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                            Copy
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             @endif
                                         </div>
                                     </div>
@@ -103,64 +164,143 @@
         </div>
     </div>
 
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                window.generateSignedUrl = async function(videoId) {
-                    try {
-                        const response = await fetch(`/videos/${videoId}/signed-url`);
-                        const data = await response.json();
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            window.generateSignedUrl = async function(videoId) {
+                try {
+                    const response = await fetch(`/videos/${videoId}/signed-url`);
+                    const data = await response.json();
 
-                        if (data.url) {
-                            const urlDiv = document.getElementById(`url-${videoId}`);
-                            const urlInput = document.getElementById(`url-input-${videoId}`);
-                            const timerDiv = document.getElementById(`timer-${videoId}`);
-                            const generateBtn = document.getElementById(`generate-btn-${videoId}`);
+                    if (data.url) {
+                        const urlDiv = document.getElementById(`url-${videoId}`);
+                        const urlInput = document.getElementById(`url-input-${videoId}`);
+                        const timerDiv = document.getElementById(`timer-${videoId}`);
+                        const generateBtn = document.getElementById(`generate-btn-${videoId}`);
 
-                            urlInput.value = data.url;
-                            urlDiv.classList.remove('hidden');
-                            timerDiv.classList.remove('hidden');
-                            generateBtn.classList.add('hidden');
+                        urlInput.value = data.url;
+                        urlDiv.classList.remove('hidden');
+                        timerDiv.classList.remove('hidden');
+                        generateBtn.classList.add('hidden');
 
-                            const expiryTime = new Date(data.expires_at).getTime();
-                            updateTimer(videoId, expiryTime);
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('Failed to generate download link');
+                        const expiryTime = new Date(data.expires_at).getTime();
+                        updateTimer(videoId, expiryTime);
                     }
-                };
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to generate download link');
+                }
+            };
 
-                window.formatTime = function(seconds) {
-                    const hours = Math.floor(seconds / 3600);
-                    const minutes = Math.floor((seconds % 3600) / 60);
-                    const remainingSeconds = seconds % 60;
-                    return `${hours}h ${minutes}m ${remainingSeconds}s`;
-                };
+            window.formatTime = function(seconds) {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const remainingSeconds = seconds % 60;
+                return `${hours}h ${minutes}m ${remainingSeconds}s`;
+            };
 
-                window.updateTimer = function(videoId, expiryTime) {
-                    const timerElement = document.querySelector(`#timer-${videoId} span`);
-                    const interval = setInterval(() => {
-                        const now = new Date().getTime();
-                        const timeLeft = Math.floor((expiryTime - now) / 1000);
+            window.updateTimer = function(videoId, expiryTime) {
+                const timerElement = document.querySelector(`#timer-${videoId} span`);
+                const interval = setInterval(() => {
+                    const now = new Date().getTime();
+                    const timeLeft = Math.floor((expiryTime - now) / 1000);
 
-                        if (timeLeft <= 0) {
-                            clearInterval(interval);
-                            document.getElementById(`url-${videoId}`).classList.add('hidden');
-                            document.getElementById(`timer-${videoId}`).classList.add('hidden');
-                            document.getElementById(`generate-btn-${videoId}`).classList.remove('hidden');
-                            return;
-                        }
+                    if (timeLeft <= 0) {
+                        clearInterval(interval);
+                        document.getElementById(`url-${videoId}`).classList.add('hidden');
+                        document.getElementById(`timer-${videoId}`).classList.add('hidden');
+                        document.getElementById(`generate-btn-${videoId}`).classList.remove('hidden');
+                        return;
+                    }
 
-                        timerElement.textContent = formatTime(timeLeft);
-                    }, 1000);
-                };
+                    timerElement.textContent = formatTime(timeLeft);
+                }, 1000);
+            };
 
-                window.copyUrl = function(videoId) {
+            window.copyUrl = function(videoId) {
+                const urlInput = document.getElementById(`url-input-${videoId}`);
+                urlInput.select();
+                document.execCommand('copy');
+            };
+        });
+
+        function confirmDelete(videoId) {
+            document.getElementById(`delete-modal-${videoId}`).classList.remove('hidden');
+        }
+
+        async function generateSignedUrl(videoId) {
+            try {
+                const response = await fetch(`/videos/${videoId}/signed-url`, {
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+
+                if (data.url) {
+                    const urlDiv = document.getElementById(`url-${videoId}`);
                     const urlInput = document.getElementById(`url-input-${videoId}`);
-                    urlInput.select();
-                    document.execCommand('copy');
-                    alert('URL copied to clipboard!');
-                };
-            });
-        </script>
-    </x-app-layout>
+                    const timerDiv = document.getElementById(`timer-${videoId}`);
+                    const generateBtn = document.getElementById(`generate-btn-${videoId}`);
+
+                    urlInput.value = data.url;
+                    urlDiv.classList.remove('hidden');
+                    timerDiv.classList.remove('hidden');
+                    generateBtn.classList.add('hidden');
+
+                    const expiryTime = new Date(data.expires_at).getTime();
+                    updateTimer(videoId, expiryTime);
+
+                    showNotification('Download link generated successfully', 'success');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Failed to generate download link. Please try again.', 'error');
+            }
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-md ${
+        type === 'success' ? 'bg-green-500' : 'bg-red-500'
+    } text-white shadow-lg transition-opacity duration-500`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+
+        async function deleteVideo(videoId) {
+            try {
+                const response = await fetch(`/videos/${videoId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    // 成功時の処理
+                    const element = document.getElementById(`video-${videoId}`).closest('.bg-white.rounded-lg');
+                    element.remove();
+                    // 削除成功メッセージを表示
+                    showNotification('Video deleted successfully', 'success');
+                } else {
+                    throw new Error('Failed to delete video');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Failed to delete video', 'error');
+            }
+        }
+    </script>
+</x-app-layout>

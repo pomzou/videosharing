@@ -27,6 +27,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/videos', [VideoFileController::class, 'index'])->name('videos.index');
     Route::get('/videos/{videoFile}/signed-url', [VideoFileController::class, 'generateSignedUrl'])
          ->name('videos.signed-url');
+
+    Route::delete('/videos/{videoFile}', [VideoFileController::class, 'destroy'])->name('videos.destroy');
 });
 
 require __DIR__.'/auth.php';
