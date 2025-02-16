@@ -5,15 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\VideoFile;
 use App\Models\VideoShare;
 use App\Models\AccessLog;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\VideoShared;
 
 class VideoShareController extends Controller
 {
     public function share(Request $request, VideoFile $videoFile)
     {
         // 所有者チェック
-        if ($videoFile->user_id !== auth()->id()) {
+        if ($videoFile->user_id !== Auth::id()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -35,7 +38,6 @@ class VideoShareController extends Controller
             ]);
         }
 
-        // 新しい共有設定を作成
         $share = $videoFile->shares()->create([
             'email' => $request->email,
             'access_token' => Str::random(32),
@@ -43,7 +45,8 @@ class VideoShareController extends Controller
             'is_active' => true
         ]);
 
-        // ここで後ほどメール通知を実装
+        // メール送信
+        Mail::to($request->email)->send(new VideoShared($share));
 
         return response()->json([
             'message' => 'Video shared successfully',
@@ -54,7 +57,7 @@ class VideoShareController extends Controller
     public function revokeAccess(VideoShare $share)
     {
         // 所有者チェック
-        if ($share->videoFile->user_id !== auth()->id()) {
+        if ($share->videoFile->user_id !== Auth::id()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -90,7 +93,7 @@ class VideoShareController extends Controller
 
     public function listShares(VideoFile $videoFile)
     {
-        if ($videoFile->user_id !== auth()->id()) {
+        if ($videoFile->user_id !== Auth::id()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

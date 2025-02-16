@@ -120,6 +120,32 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        <!-- Shared List -->
+                                        <div class="mt-4">
+                                            <h4 class="text-lg font-medium text-gray-900">Shared With</h4>
+                                            <div id="shares-list-{{ $video->id }}" class="mt-2 space-y-2">
+                                                @foreach ($video->shares as $share)
+                                                    <div
+                                                        class="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                                                        <div>
+                                                            <span
+                                                                class="text-sm text-gray-600">{{ $share->email }}</span>
+                                                            <span class="text-xs text-gray-500 ml-2">
+                                                                Expires: {{ $share->expires_at->format('Y-m-d H:i') }}
+                                                            </span>
+                                                        </div>
+                                                        @if ($share->is_active)
+                                                            <button onclick="revokeAccess({{ $share->id }})"
+                                                                class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                Revoke Access
+                                                            </button>
+                                                        @else
+                                                            <span class="text-xs text-gray-500">Access Revoked</span>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
 
                                         <!-- Delete Confirmation Modal -->
                                         <div id="delete-modal-{{ $video->id }}"
@@ -166,7 +192,8 @@
                                                 <div id="timer-{{ $video->id }}" class="text-sm text-gray-600">
                                                     <p class="font-medium">Link expires:
                                                         {{ $video->url_expires_at->diffForHumans() }}</p>
-                                                    <p>Time remaining: <span class="text-indigo-600 font-medium"></span>
+                                                    <p>Time remaining: <span
+                                                            class="text-indigo-600 font-medium"></span>
                                                     </p>
                                                 </div>
                                                 <div id="url-{{ $video->id }}" class="space-y-2">
@@ -384,6 +411,31 @@
                     closeShareModal(videoId);
                 } else {
                     throw new Error(data.error || 'Failed to share video');
+                }
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+        async function revokeAccess(shareId) {
+            if (!confirm('Are you sure you want to revoke access?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/shares/${shareId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    showNotification('Access revoked successfully', 'success');
+                    // ページをリロードするか、DOMを更新
+                    window.location.reload();
+                } else {
+                    throw new Error('Failed to revoke access');
                 }
             } catch (error) {
                 showNotification(error.message, 'error');
