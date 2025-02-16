@@ -10,28 +10,27 @@ services:
         GROUP_ID: ${GROUP_ID:-1000}
     volumes:
       - ./src:/var/www/html
-    user: "${USER_ID:-1000}:${GROUP_ID:-1000}"
     ports:
       - "8080:80"
     depends_on:
       - db
-    environment:
-      DB_HOST: db
-      DB_DATABASE: videosharing
-      DB_USERNAME: admin
-      DB_PASSWORD: password
+    networks:
+      - app-network
 
   db:
     image: mysql:8.0
-    ports:
-      - "3306:3306"
+    container_name: app-db
     environment:
       MYSQL_DATABASE: videosharing
       MYSQL_USER: admin
       MYSQL_PASSWORD: password
       MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -41,6 +40,12 @@ services:
       PMA_HOST: db
     depends_on:
       - db
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   mysql_data:
