@@ -36,7 +36,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/videos/{videoFile}/share', [VideoShareController::class, 'share'])->name('videos.share');
     Route::delete('/shares/{share}', [VideoShareController::class, 'revokeAccess'])->name('shares.revoke');
     Route::get('/shares/{videoFile}', [VideoShareController::class, 'listShares'])->name('shares.list');
-    Route::post('/videos/{videoFile}/signed-url', [VideoFileController::class, 'generateSignedUrl'])->name('videos.signed-url');
 });
 
 require __DIR__ . '/auth.php';
