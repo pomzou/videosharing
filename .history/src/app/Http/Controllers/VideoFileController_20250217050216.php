@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Aws\S3\S3Client;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 
 class VideoFileController extends Controller
 {
@@ -170,7 +169,7 @@ class VideoFileController extends Controller
     {
         try {
             // 所有者チェック
-            if ($videoFile->user_id !== Auth::id()) {
+            if ($videoFile->user_id !== auth()->id()) {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
@@ -198,7 +197,7 @@ class VideoFileController extends Controller
                 throw $e;
             }
         } catch (\Exception $e) {
-            $log = Log::error('Failed to delete video', [
+            \Log::error('Failed to delete video', [
                 'video_id' => $videoFile->id,
                 'error' => $e->getMessage()
             ]);
