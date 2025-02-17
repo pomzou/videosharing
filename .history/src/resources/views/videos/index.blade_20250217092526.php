@@ -198,37 +198,36 @@
 
                                         <!-- Download Link Section -->
                                         <div class="space-y-3">
-                                            <!-- Timer -->
-                                            <div id="timer-{{ $video->id }}"
-                                                class="text-sm text-gray-600 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
-                                                <p class="font-medium">Link expires:
-                                                    {{ $video->url_expires_at ? $video->url_expires_at->diffForHumans() : '' }}
-                                                </p>
-                                                <p>Time remaining: <span class="text-indigo-600 font-medium"></span>
-                                                </p>
-                                            </div>
-
-                                            <!-- URL Input and Copy Button -->
-                                            <div id="url-{{ $video->id }}"
-                                                class="space-y-2 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
-                                                <div class="flex items-center gap-2">
-                                                    <input type="text" id="url-input-{{ $video->id }}"
-                                                        value="{{ $video->current_signed_url ?? '' }}"
-                                                        class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                        readonly>
-                                                    <button onclick="copyUrl({{ $video->id }})"
-                                                        class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                        Copy
-                                                    </button>
+                                            @if ($video->url_expires_at && $video->url_expires_at->isFuture())
+                                                <div id="url-{{ $video->id }}" class="mt-2 hidden">
+                                                    <p class="text-sm text-gray-600">Link expires in 24 hours:</p>
+                                                    <div class="flex items-center space-x-2">
+                                                        <input type="text" id="url-input-{{ $video->id }}"
+                                                            class="flex-1 p-2 border rounded" readonly>
+                                                        <button onclick="copyUrl({{ $video->id }})"
+                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none">
+                                                            Copy
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </div>
-
-                                            <!-- Generate Button -->
-                                            <button id="generate-btn-{{ $video->id }}"
-                                                onclick="generateSignedUrl({{ $video->id }})"
-                                                class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 {{ $video->url_expires_at && $video->url_expires_at->isFuture() ? 'hidden' : '' }}">
-                                                Generate Download Link
-                                            </button>
+                                            @else
+                                                <button id="generate-btn-{{ $video->id }}"
+                                                    onclick="generateSignedUrl({{ $video->id }})"
+                                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                    Generate Download Link
+                                                </button>
+                                                <div id="url-{{ $video->id }}" class="space-y-2 hidden">
+                                                    <div class="flex items-center gap-2">
+                                                        <input type="text" id="url-input-{{ $video->id }}"
+                                                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                            readonly>
+                                                        <button onclick="copyUrl({{ $video->id }})"
+                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                            Copy
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>

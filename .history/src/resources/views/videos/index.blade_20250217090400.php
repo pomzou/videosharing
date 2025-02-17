@@ -1,6 +1,4 @@
-<x-alert />
-<meta name="csrf-token" content="{{ csrf_token() }}">
-<x-app-layout>
+<x-alert /><x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('My Videos') }}
@@ -198,37 +196,44 @@
 
                                         <!-- Download Link Section -->
                                         <div class="space-y-3">
-                                            <!-- Timer -->
-                                            <div id="timer-{{ $video->id }}"
-                                                class="text-sm text-gray-600 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
-                                                <p class="font-medium">Link expires:
-                                                    {{ $video->url_expires_at ? $video->url_expires_at->diffForHumans() : '' }}
-                                                </p>
-                                                <p>Time remaining: <span class="text-indigo-600 font-medium"></span>
-                                                </p>
-                                            </div>
-
-                                            <!-- URL Input and Copy Button -->
-                                            <div id="url-{{ $video->id }}"
-                                                class="space-y-2 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
-                                                <div class="flex items-center gap-2">
-                                                    <input type="text" id="url-input-{{ $video->id }}"
-                                                        value="{{ $video->current_signed_url ?? '' }}"
-                                                        class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                        readonly>
-                                                    <button onclick="copyUrl({{ $video->id }})"
-                                                        class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                        Copy
-                                                    </button>
+                                            @if ($video->url_expires_at && $video->url_expires_at->isFuture())
+                                                <div id="timer-{{ $video->id }}" class="text-sm text-gray-600">
+                                                    <p class="font-medium">Link expires:
+                                                        {{ $video->url_expires_at->diffForHumans() }}</p>
+                                                    <p>Time remaining: <span
+                                                            class="text-indigo-600 font-medium"></span>
+                                                    </p>
                                                 </div>
-                                            </div>
-
-                                            <!-- Generate Button -->
-                                            <button id="generate-btn-{{ $video->id }}"
-                                                onclick="generateSignedUrl({{ $video->id }})"
-                                                class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 {{ $video->url_expires_at && $video->url_expires_at->isFuture() ? 'hidden' : '' }}">
-                                                Generate Download Link
-                                            </button>
+                                                <div id="url-{{ $video->id }}" class="space-y-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <input type="text" id="url-input-{{ $video->id }}"
+                                                            value="{{ $video->current_signed_url }}"
+                                                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                            readonly>
+                                                        <button onclick="copyUrl({{ $video->id }})"
+                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                            Copy
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <button id="generate-btn-{{ $video->id }}"
+                                                    onclick="generateSignedUrl({{ $video->id }})"
+                                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                    Generate Download Link
+                                                </button>
+                                                <div id="url-{{ $video->id }}" class="space-y-2 hidden">
+                                                    <div class="flex items-center gap-2">
+                                                        <input type="text" id="url-input-{{ $video->id }}"
+                                                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                            readonly>
+                                                        <button onclick="copyUrl({{ $video->id }})"
+                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                            Copy
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -305,65 +310,50 @@
 
         async function generateSignedUrl(videoId) {
             try {
-                // CSRFトークンの取得を確実に
-                const csrfToken = document.querySelector('meta[name="csrf-token"]');
-                if (!csrfToken) {
-                    throw new Error('CSRF token not found');
-                }
-
                 const response = await fetch(`/videos/${videoId}/signed-url`, {
-                    method: 'GET', // メソッドを明示的に指定
                     headers: {
-                        'X-CSRF-TOKEN': csrfToken.content,
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
                     }
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
                 const data = await response.json();
 
-                // 要素の取得
-                const urlDiv = document.getElementById(`url-${videoId}`);
-                const urlInput = document.getElementById(`url-input-${videoId}`);
-                const timerDiv = document.getElementById(`timer-${videoId}`);
-                const generateBtn = document.getElementById(`generate-btn-${videoId}`);
-
-                // 要素の存在確認
-                if (!urlDiv || !urlInput) {
-                    console.error(`Required elements not found for video ${videoId}`);
-                    return;
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to generate download link');
                 }
 
-                // URLの設定と表示
-                urlInput.value = data.url;
-                urlDiv.classList.remove('hidden');
+                if (data.url) {
+                    const urlDiv = document.getElementById(`url-${videoId}`);
+                    const urlInput = document.getElementById(`url-input-${videoId}`);
+                    const timerDiv = document.getElementById(`timer-${videoId}`);
+                    const generateBtn = document.getElementById(`generate-btn-${videoId}`);
 
-                // ボタンの非表示
-                if (generateBtn) {
-                    generateBtn.classList.add('hidden');
+                    // 要素の存在チェック
+                    if (!urlDiv || !urlInput) {
+                        console.error('Required elements not found');
+                        return;
+                    }
+
+                    urlInput.value = data.url;
+                    urlDiv.classList.remove('hidden');
+
+                    if (generateBtn) {
+                        generateBtn.classList.add('hidden');
+                    }
+
+                    if (timerDiv) {
+                        timerDiv.classList.remove('hidden');
+                        const expiryTime = new Date(data.expires_at).getTime();
+                        updateTimer(videoId, expiryTime);
+                    }
+
+                    showNotification('Download link generated successfully', 'success');
+                    console.log('Download link generated successfully:', data.url);
                 }
-
-                // タイマーの設定
-                if (timerDiv) {
-                    timerDiv.classList.remove('hidden');
-                    const expiryTime = new Date(data.expires_at).getTime();
-                    updateTimer(videoId, expiryTime);
-                }
-
-                // 成功通知
-                showNotification('Download link generated successfully', 'success');
-                console.log('Generate URL success:', {
-                    videoId,
-                    expiryTime: data.expires_at
-                });
-
             } catch (error) {
-                console.error('Generate URL error:', error);
-                showNotification('Failed to generate download link', 'error');
+                console.error('Error:', error);
+                showNotification(error.message, 'error');
             }
         }
 

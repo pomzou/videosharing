@@ -10,8 +10,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\VideoShared;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 
 class VideoShareController extends Controller
 {
