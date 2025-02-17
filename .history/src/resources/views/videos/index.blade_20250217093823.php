@@ -198,15 +198,8 @@
 
                                         <!-- Download Link Section -->
                                         <div class="space-y-3">
-                                            <!-- Timer -->
-                                            <div id="timer-{{ $video->id }}"
-                                                class="text-sm text-gray-600 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
-                                                <p>Time remaining: <span class="text-indigo-600 font-medium"></span>
-                                                </p>
-                                            </div>
-
-                                            <!-- URL Input and Copy Button -->
-                                            <div id="url-{{ $video->id }}"
+                                            <!-- URL Input and Timer -->
+                                            <div id="url-container-{{ $video->id }}"
                                                 class="space-y-2 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
                                                 <div class="flex items-center gap-2">
                                                     <input type="text" id="url-input-{{ $video->id }}"
@@ -217,6 +210,10 @@
                                                         class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                                                         Copy
                                                     </button>
+                                                </div>
+                                                <div id="timer-{{ $video->id }}" class="text-sm text-gray-600">
+                                                    <p>Time remaining: <span
+                                                            class="text-indigo-600 font-medium"></span></p>
                                                 </div>
                                             </div>
 
@@ -300,7 +297,7 @@
             document.getElementById(`delete-modal-${videoId}`).classList.remove('hidden');
         }
 
-        async function generateSignedUrl(videoId) {
+        function generateSignedUrl(videoId) {
             try {
                 const response = await fetch(`/videos/${videoId}/signed-url`, {
                     headers: {
@@ -316,30 +313,20 @@
                 }
 
                 if (data.url) {
-                    const urlDiv = document.getElementById(`url-${videoId}`);
+                    const urlContainer = document.getElementById(`url-container-${videoId}`);
                     const urlInput = document.getElementById(`url-input-${videoId}`);
-                    const timerDiv = document.getElementById(`timer-${videoId}`);
                     const generateBtn = document.getElementById(`generate-btn-${videoId}`);
 
-                    if (urlInput) {
+                    if (urlInput && urlContainer) {
                         urlInput.value = data.url;
-                    }
-                    if (urlDiv) {
-                        urlDiv.classList.remove('hidden');
-                    }
-                    if (generateBtn) {
-                        generateBtn.classList.add('hidden');
-                    }
-                    if (timerDiv) {
-                        timerDiv.classList.remove('hidden');
+                        urlContainer.classList.remove('hidden');
+                        if (generateBtn) generateBtn.classList.add('hidden');
+
                         const expiryTime = new Date(data.expires_at).getTime();
                         updateTimer(videoId, expiryTime);
                     }
 
                     showNotification('Download link generated successfully', 'success');
-
-                    // ページをリロードして最新の状態を表示
-                    window.location.reload();
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -347,52 +334,29 @@
             }
         }
 
-        // ページ読み込み時にタイマーを初期化
-        document.addEventListener('DOMContentLoaded', function() {
-            // すべてのビデオのタイマーを初期化
-            @foreach ($videos as $video)
-                @if ($video->url_expires_at && $video->url_expires_at->isFuture())
-                    initializeTimer(
-                        {{ $video->id }},
-                        new Date('{{ $video->url_expires_at->toISOString() }}').getTime()
-                    );
-                @endif
-            @endforeach
-        });
-
-        function initializeTimer(videoId, expiryTime) {
+        function updateTimer(videoId, expiryTime) {
             const timerElement = document.querySelector(`#timer-${videoId} span`);
             if (!timerElement) return;
 
-            function updateRemainingTime() {
+            function updateDisplay() {
                 const now = new Date().getTime();
                 const timeLeft = Math.floor((expiryTime - now) / 1000);
 
                 if (timeLeft <= 0) {
                     clearInterval(interval);
-                    document.getElementById(`url-${videoId}`).classList.add('hidden');
-                    document.getElementById(`timer-${videoId}`).classList.add('hidden');
+                    const urlContainer = document.getElementById(`url-container-${videoId}`);
                     const generateBtn = document.getElementById(`generate-btn-${videoId}`);
-                    if (generateBtn) {
-                        generateBtn.classList.remove('hidden');
-                    }
+
+                    if (urlContainer) urlContainer.classList.add('hidden');
+                    if (generateBtn) generateBtn.classList.remove('hidden');
                     return;
                 }
 
                 timerElement.textContent = formatTime(timeLeft);
             }
 
-            // 初回実行
-            updateRemainingTime();
-            // 1秒ごとに更新
-            const interval = setInterval(updateRemainingTime, 1000);
-        }
-
-        function formatTime(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const remainingSeconds = seconds % 60;
-            return `${hours}h ${minutes}m ${remainingSeconds}s`;
+            const interval = setInterval(updateDisplay, 1000);
+            updateDisplay(); // 即時に表示を更新
         }
 
         function showNotification(message, type) {

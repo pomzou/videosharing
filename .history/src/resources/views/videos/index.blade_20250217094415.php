@@ -201,12 +201,15 @@
                                             <!-- Timer -->
                                             <div id="timer-{{ $video->id }}"
                                                 class="text-sm text-gray-600 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
+                                                <p class="font-medium">Link expires:
+                                                    {{ $video->url_expires_at ? $video->url_expires_at->diffForHumans() : '' }}
+                                                </p>
                                                 <p>Time remaining: <span class="text-indigo-600 font-medium"></span>
                                                 </p>
                                             </div>
 
-                                            <!-- URL Input and Copy Button -->
-                                            <div id="url-{{ $video->id }}"
+                                            <!-- URL Input and Timer -->
+                                            <div id="url-container-{{ $video->id }}"
                                                 class="space-y-2 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
                                                 <div class="flex items-center gap-2">
                                                     <input type="text" id="url-input-{{ $video->id }}"
@@ -217,6 +220,10 @@
                                                         class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                                                         Copy
                                                     </button>
+                                                </div>
+                                                <div id="timer-{{ $video->id }}" class="text-sm text-gray-600">
+                                                    <p>Time remaining: <span
+                                                            class="text-indigo-600 font-medium"></span></p>
                                                 </div>
                                             </div>
 
@@ -302,97 +309,66 @@
 
         async function generateSignedUrl(videoId) {
             try {
+                // CSRFトークンの取得を確実に
+                const csrfToken = document.querySelector('meta[name="csrf-token"]');
+                if (!csrfToken) {
+                    throw new Error('CSRF token not found');
+                }
+
                 const response = await fetch(`/videos/${videoId}/signed-url`, {
+                    method: 'GET', // メソッドを明示的に指定
                     headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
+                        'X-CSRF-TOKEN': csrfToken.content,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
                     }
                 });
 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
                 const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to generate download link');
-                }
+                // 要素の取得
+                const urlDiv = document.getElementById(`url-${videoId}`);
+                const urlInput = document.getElementById(`url-input-${videoId}`);
+                const timerDiv = document.getElementById(`timer-${videoId}`);
+                const generateBtn = document.getElementById(`generate-btn-${videoId}`);
 
-                if (data.url) {
-                    const urlDiv = document.getElementById(`url-${videoId}`);
-                    const urlInput = document.getElementById(`url-input-${videoId}`);
-                    const timerDiv = document.getElementById(`timer-${videoId}`);
-                    const generateBtn = document.getElementById(`generate-btn-${videoId}`);
-
-                    if (urlInput) {
-                        urlInput.value = data.url;
-                    }
-                    if (urlDiv) {
-                        urlDiv.classList.remove('hidden');
-                    }
-                    if (generateBtn) {
-                        generateBtn.classList.add('hidden');
-                    }
-                    if (timerDiv) {
-                        timerDiv.classList.remove('hidden');
-                        const expiryTime = new Date(data.expires_at).getTime();
-                        updateTimer(videoId, expiryTime);
-                    }
-
-                    showNotification('Download link generated successfully', 'success');
-
-                    // ページをリロードして最新の状態を表示
-                    window.location.reload();
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showNotification(error.message, 'error');
-            }
-        }
-
-        // ページ読み込み時にタイマーを初期化
-        document.addEventListener('DOMContentLoaded', function() {
-            // すべてのビデオのタイマーを初期化
-            @foreach ($videos as $video)
-                @if ($video->url_expires_at && $video->url_expires_at->isFuture())
-                    initializeTimer(
-                        {{ $video->id }},
-                        new Date('{{ $video->url_expires_at->toISOString() }}').getTime()
-                    );
-                @endif
-            @endforeach
-        });
-
-        function initializeTimer(videoId, expiryTime) {
-            const timerElement = document.querySelector(`#timer-${videoId} span`);
-            if (!timerElement) return;
-
-            function updateRemainingTime() {
-                const now = new Date().getTime();
-                const timeLeft = Math.floor((expiryTime - now) / 1000);
-
-                if (timeLeft <= 0) {
-                    clearInterval(interval);
-                    document.getElementById(`url-${videoId}`).classList.add('hidden');
-                    document.getElementById(`timer-${videoId}`).classList.add('hidden');
-                    const generateBtn = document.getElementById(`generate-btn-${videoId}`);
-                    if (generateBtn) {
-                        generateBtn.classList.remove('hidden');
-                    }
+                // 要素の存在確認
+                if (!urlDiv || !urlInput) {
+                    console.error(`Required elements not found for video ${videoId}`);
                     return;
                 }
 
-                timerElement.textContent = formatTime(timeLeft);
+                // URLの設定と表示
+                urlInput.value = data.url;
+                urlDiv.classList.remove('hidden');
+
+                // ボタンの非表示
+                if (generateBtn) {
+                    generateBtn.classList.add('hidden');
+                }
+
+                // タイマーの設定
+                if (timerDiv) {
+                    timerDiv.classList.remove('hidden');
+                    const expiryTime = new Date(data.expires_at).getTime();
+                    updateTimer(videoId, expiryTime);
+                }
+
+                // 成功通知
+                showNotification('Download link generated successfully', 'success');
+                console.log('Generate URL success:', {
+                    videoId,
+                    expiryTime: data.expires_at
+                });
+
+            } catch (error) {
+                console.error('Generate URL error:', error);
+                showNotification('Failed to generate download link', 'error');
             }
-
-            // 初回実行
-            updateRemainingTime();
-            // 1秒ごとに更新
-            const interval = setInterval(updateRemainingTime, 1000);
-        }
-
-        function formatTime(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const remainingSeconds = seconds % 60;
-            return `${hours}h ${minutes}m ${remainingSeconds}s`;
         }
 
         function showNotification(message, type) {

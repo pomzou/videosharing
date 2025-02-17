@@ -347,54 +347,6 @@
             }
         }
 
-        // ページ読み込み時にタイマーを初期化
-        document.addEventListener('DOMContentLoaded', function() {
-            // すべてのビデオのタイマーを初期化
-            @foreach ($videos as $video)
-                @if ($video->url_expires_at && $video->url_expires_at->isFuture())
-                    initializeTimer(
-                        {{ $video->id }},
-                        new Date('{{ $video->url_expires_at->toISOString() }}').getTime()
-                    );
-                @endif
-            @endforeach
-        });
-
-        function initializeTimer(videoId, expiryTime) {
-            const timerElement = document.querySelector(`#timer-${videoId} span`);
-            if (!timerElement) return;
-
-            function updateRemainingTime() {
-                const now = new Date().getTime();
-                const timeLeft = Math.floor((expiryTime - now) / 1000);
-
-                if (timeLeft <= 0) {
-                    clearInterval(interval);
-                    document.getElementById(`url-${videoId}`).classList.add('hidden');
-                    document.getElementById(`timer-${videoId}`).classList.add('hidden');
-                    const generateBtn = document.getElementById(`generate-btn-${videoId}`);
-                    if (generateBtn) {
-                        generateBtn.classList.remove('hidden');
-                    }
-                    return;
-                }
-
-                timerElement.textContent = formatTime(timeLeft);
-            }
-
-            // 初回実行
-            updateRemainingTime();
-            // 1秒ごとに更新
-            const interval = setInterval(updateRemainingTime, 1000);
-        }
-
-        function formatTime(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const remainingSeconds = seconds % 60;
-            return `${hours}h ${minutes}m ${remainingSeconds}s`;
-        }
-
         function showNotification(message, type) {
             const notification = document.createElement('div');
             notification.className = `fixed top-4 right-4 p-4 rounded-md ${

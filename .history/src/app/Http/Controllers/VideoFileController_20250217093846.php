@@ -59,12 +59,14 @@ class VideoFileController extends Controller
 
     public function generateSignedUrl(VideoFile $videoFile)
     {
-        if ($videoFile->user_id !== Auth::id()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
         try {
-            $expiresAt = now()->addHours(24);
+            if ($videoFile->user_id !== Auth::id()) {
+                Log::warning('Unauthorized URL generation attempt', [
+                    'user_id' => Auth::id(),
+                    'video_id' => $videoFile->id
+                ]);
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
 
             $s3Client = new S3Client([
                 'version' => 'latest',
@@ -85,36 +87,37 @@ class VideoFileController extends Controller
 
             // URL有効期限を更新
             $videoFile->update([
-                'url_expires_at' => $expiresAt,
-                'current_signed_url' => $signedUrl  // 署名付きURLも保存
+                'url_expires_at' => now()->addHours(24)
             ]);
 
             Log::info('Signed URL generated successfully', [
                 'video_id' => $videoFile->id,
-                'expires_at' => $expiresAt
+                'expires_at' => now()->addHours(24)
             ]);
 
             return response()->json([
                 'url' => $signedUrl,
-                'expires_at' => $expiresAt->toISOString()
+                'expires_at' => $videoFile->url_expires_at->toISOString()
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to generate signed URL', [
                 'video_id' => $videoFile->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
+
             return response()->json(['error' => 'Failed to generate signed URL'], 500);
         }
     }
 
     public function index()
     {
-        try {
-            $videos = VideoFile::where('user_id', Auth::id())
-                ->orderBy('created_at', 'desc')
-                ->get();
+        $videos = VideoFile::where('user_id', Auth::id())
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-            foreach ($videos as $video) {
+        foreach ($videos as $video) {
+            if ($video->url_expires_at && $video->url_expires_at->isFuture()) {
                 try {
                     $s3Client = new S3Client([
                         'version' => 'latest',
@@ -131,27 +134,17 @@ class VideoFileController extends Controller
                     ]);
 
                     $video->preview_url = (string) $s3Client->createPresignedRequest($cmd, '+1 hour')->getUri();
-
-                    if ($video->url_expires_at && $video->url_expires_at->isFuture()) {
-                        $video->current_signed_url = (string) $s3Client->createPresignedRequest($cmd, '+24 hours')->getUri();
-                    }
+                    $video->current_signed_url = (string) $s3Client->createPresignedRequest($cmd, '+24 hours')->getUri();
                 } catch (\Exception $e) {
                     Log::error('Error generating signed URL', [
                         'video_id' => $video->id,
                         'error' => $e->getMessage()
                     ]);
-                    $video->preview_url = null;
-                    $video->current_signed_url = null;
                 }
             }
-
-            return view('videos.index', compact('videos'));
-        } catch (\Exception $e) {
-            Log::error('Error fetching videos', [
-                'error' => $e->getMessage()
-            ]);
-            return view('videos.index')->with('error', 'Failed to load videos. Please try again.');
         }
+
+        return view('videos.index', compact('videos'));
     }
 
     private function refreshSignedUrl($video)

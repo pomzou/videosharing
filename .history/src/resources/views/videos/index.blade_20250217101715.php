@@ -199,42 +199,43 @@
                                         <!-- Download Link Section -->
                                         <div class="space-y-3">
                                             <!-- Timer -->
-                                            <div id="timer-{{ $video->id }}"
-                                                class="text-sm text-gray-600 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
+                                            <div id="timer-{{ $video->id }}" data-video-id="{{ $video->id }}"
+                                                class="text-sm text-gray-600">
                                                 <p>Time remaining: <span class="text-indigo-600 font-medium"></span>
                                                 </p>
                                             </div>
-
-                                            <!-- URL Input and Copy Button -->
-                                            <div id="url-{{ $video->id }}"
-                                                class="space-y-2 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
-                                                <div class="flex items-center gap-2">
-                                                    <input type="text" id="url-input-{{ $video->id }}"
-                                                        value="{{ $video->current_signed_url ?? '' }}"
-                                                        class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                        readonly>
-                                                    <button onclick="copyUrl({{ $video->id }})"
-                                                        class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                        Copy
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <!-- Generate Button -->
-                                            <button id="generate-btn-{{ $video->id }}"
-                                                onclick="generateSignedUrl({{ $video->id }})"
-                                                class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 {{ $video->url_expires_at && $video->url_expires_at->isFuture() ? 'hidden' : '' }}">
-                                                Generate Download Link
-                                            </button>
                                         </div>
+
+                                        <!-- URL Input and Copy Button -->
+                                        <div id="url-{{ $video->id }}"
+                                            class="space-y-2 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
+                                            <div class="flex items-center gap-2">
+                                                <input type="text" id="url-input-{{ $video->id }}"
+                                                    value="{{ $video->current_signed_url ?? '' }}"
+                                                    class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    readonly>
+                                                <button onclick="copyUrl({{ $video->id }})"
+                                                    class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                    Copy
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Generate Button -->
+                                        <button id="generate-btn-{{ $video->id }}"
+                                            onclick="generateSignedUrl({{ $video->id }})"
+                                            class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 {{ $video->url_expires_at && $video->url_expires_at->isFuture() ? 'hidden' : '' }}">
+                                            Generate Download Link
+                                        </button>
                                     </div>
                                 </div>
-                            @endforeach
                         </div>
-                    @endif
+                    @endforeach
                 </div>
+                @endif
             </div>
         </div>
+    </div>
     </div>
 
     <script>
@@ -333,13 +334,11 @@
                     if (timerDiv) {
                         timerDiv.classList.remove('hidden');
                         const expiryTime = new Date(data.expires_at).getTime();
-                        updateTimer(videoId, expiryTime);
+                        localStorage.setItem(`video-${videoId}-expires_at`, expiryTime); // タイマーの期限を保存
+                        updateTimer(videoId, expiryTime); // タイマーを更新
                     }
 
                     showNotification('Download link generated successfully', 'success');
-
-                    // ページをリロードして最新の状態を表示
-                    window.location.reload();
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -347,53 +346,43 @@
             }
         }
 
-        // ページ読み込み時にタイマーを初期化
-        document.addEventListener('DOMContentLoaded', function() {
-            // すべてのビデオのタイマーを初期化
-            @foreach ($videos as $video)
-                @if ($video->url_expires_at && $video->url_expires_at->isFuture())
-                    initializeTimer(
-                        {{ $video->id }},
-                        new Date('{{ $video->url_expires_at->toISOString() }}').getTime()
-                    );
-                @endif
-            @endforeach
-        });
+        function updateTimer(videoId, expiryTime) {
+            const timerDiv = document.getElementById(`timer-${videoId}`);
+            const remainingTimeElem = document.getElementById(`time-remaining-${videoId}`);
 
-        function initializeTimer(videoId, expiryTime) {
-            const timerElement = document.querySelector(`#timer-${videoId} span`);
-            if (!timerElement) return;
+            const updateTimerDisplay = () => {
+                const now = new Date();
+                const remainingTime = expiryTime - now.getTime();
 
-            function updateRemainingTime() {
-                const now = new Date().getTime();
-                const timeLeft = Math.floor((expiryTime - now) / 1000);
+                if (remainingTime > 0) {
+                    const seconds = Math.floor((remainingTime / 1000) % 60);
+                    const minutes = Math.floor((remainingTime / 1000 / 60) % 60);
+                    const hours = Math.floor((remainingTime / 1000 / 60 / 60) % 24);
+                    const days = Math.floor(remainingTime / (1000 * 60 * 60 * 24));
 
-                if (timeLeft <= 0) {
-                    clearInterval(interval);
-                    document.getElementById(`url-${videoId}`).classList.add('hidden');
-                    document.getElementById(`timer-${videoId}`).classList.add('hidden');
-                    const generateBtn = document.getElementById(`generate-btn-${videoId}`);
-                    if (generateBtn) {
-                        generateBtn.classList.remove('hidden');
-                    }
-                    return;
+                    remainingTimeElem.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+                } else {
+                    remainingTimeElem.textContent = 'Expired';
+                    localStorage.removeItem(`video-${videoId}-expires_at`); // 期限が切れたらローカルストレージから削除
                 }
+            };
 
-                timerElement.textContent = formatTime(timeLeft);
+            setInterval(updateTimerDisplay, 1000); // 毎秒更新
+            updateTimerDisplay(); // 最初に1回表示
+        }
+
+        // ページが読み込まれたときにタイマーを再設定
+        window.onload = function() {
+            const timerDiv = document.querySelector('.text-sm.text-gray-600');
+            const videoId = timerDiv ? timerDiv.getAttribute('data-video-id') : null;
+
+            if (videoId) {
+                const storedExpiryTime = localStorage.getItem(`video-${videoId}-expires_at`);
+                if (storedExpiryTime) {
+                    updateTimer(videoId, parseInt(storedExpiryTime)); // 保存された期限を基にタイマーを更新
+                }
             }
-
-            // 初回実行
-            updateRemainingTime();
-            // 1秒ごとに更新
-            const interval = setInterval(updateRemainingTime, 1000);
-        }
-
-        function formatTime(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const remainingSeconds = seconds % 60;
-            return `${hours}h ${minutes}m ${remainingSeconds}s`;
-        }
+        };
 
         function showNotification(message, type) {
             const notification = document.createElement('div');
