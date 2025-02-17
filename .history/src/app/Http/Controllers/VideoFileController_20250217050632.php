@@ -101,49 +101,42 @@ class VideoFileController extends Controller
 
     public function index()
     {
-        try {
-            $videos = VideoFile::where('user_id', Auth::id())
-                ->orderBy('created_at', 'desc')
-                ->get();
+        $videos = VideoFile::where('user_id', Auth::id())
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-            foreach ($videos as $video) {
-                try {
-                    $s3Client = new S3Client([
-                        'version' => 'latest',
-                        'region'  => config('filesystems.disks.s3.region'),
-                        'credentials' => [
-                            'key'    => config('filesystems.disks.s3.key'),
-                            'secret' => config('filesystems.disks.s3.secret'),
-                        ],
-                    ]);
+        // 各ビデオに対して署名付きURLを生成
+        foreach ($videos as $video) {
+            try {
+                $s3Client = new S3Client([
+                    'version' => 'latest',
+                    'region'  => config('filesystems.disks.s3.region'),
+                    'credentials' => [
+                        'key'    => config('filesystems.disks.s3.key'),
+                        'secret' => config('filesystems.disks.s3.secret'),
+                    ],
+                ]);
 
-                    $cmd = $s3Client->getCommand('GetObject', [
-                        'Bucket' => config('filesystems.disks.s3.bucket'),
-                        'Key'    => $video->s3_path
-                    ]);
+                // プレビュー用とダウンロード用の署名付きURL生成
+                $cmd = $s3Client->getCommand('GetObject', [
+                    'Bucket' => config('filesystems.disks.s3.bucket'),
+                    'Key'    => $video->s3_path
+                ]);
 
-                    $video->preview_url = (string) $s3Client->createPresignedRequest($cmd, '+1 hour')->getUri();
+                $video->preview_url = (string) $s3Client->createPresignedRequest($cmd, '+1 hour')->getUri();
 
-                    if ($video->url_expires_at && $video->url_expires_at->isFuture()) {
-                        $video->current_signed_url = (string) $s3Client->createPresignedRequest($cmd, '+24 hours')->getUri();
-                    }
-                } catch (\Exception $e) {
-                    Log::error('Error generating signed URL', [
-                        'video_id' => $video->id,
-                        'error' => $e->getMessage()
-                    ]);
-                    $video->preview_url = null;
-                    $video->current_signed_url = null;
+                if ($video->url_expires_at && $video->url_expires_at->isFuture()) {
+                    $video->current_signed_url = (string) $s3Client->createPresignedRequest($cmd, '+24 hours')->getUri();
                 }
+            } catch (\Exception $e) {
+                $log = Log::error('Failed to generate signed URL', [
+                    'video_id' => $video->id,
+                    'error' => $e->getMessage()
+                ]);
             }
-
-            return view('videos.index', compact('videos'));
-        } catch (\Exception $e) {
-            Log::error('Error fetching videos', [
-                'error' => $e->getMessage()
-            ]);
-            return view('videos.index')->with('error', 'Failed to load videos. Please try again.');
         }
+
+        return view('videos.index', compact('videos'));
     }
 
     private function refreshSignedUrl($video)
@@ -205,7 +198,7 @@ class VideoFileController extends Controller
                 throw $e;
             }
         } catch (\Exception $e) {
-            $log = Log::error('Failed to delete video', [
+            \Log::error('Failed to delete video', [
                 'video_id' => $videoFile->id,
                 'error' => $e->getMessage()
             ]);
