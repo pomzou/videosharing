@@ -169,7 +169,7 @@ class VideoFileController extends Controller
     {
         try {
             // 所有者チェック
-            if ($videoFile->user_id !== Auth::id()) {
+            if ($videoFile->user_id !== auth()->id()) {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
@@ -181,7 +181,7 @@ class VideoFileController extends Controller
             try {
                 Storage::disk('s3')->delete($videoFile->s3_path);
             } catch (\Exception $e) {
-                $log = Log::error('Failed to delete file from S3', [
+                \Log::error('Failed to delete file from S3', [
                     'file_path' => $videoFile->s3_path,
                     'error' => $e->getMessage()
                 ]);
@@ -194,7 +194,7 @@ class VideoFileController extends Controller
                 'message' => 'Video deleted successfully'
             ]);
         } catch (\Exception $e) {
-            $log = Log::error('Failed to delete video', [
+            \Log::error('Failed to delete video', [
                 'video_id' => $videoFile->id,
                 'error' => $e->getMessage()
             ]);

@@ -66,15 +66,15 @@
 
                                         <!-- Video Controls -->
                                         <div class="flex justify-between items-center mt-4 space-x-2">
-                                            <button onclick="openShareModal({{ $video->id }})"
-                                                class="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                                Share Video
-                                            </button>
-                                            <button onclick="confirmDelete({{ $video->id }})"
-                                                class="flex-1 px-4 py-2 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                                Delete Video
-                                            </button>
+                                            <div class="flex space-x-2">
+                                                <!-- Share Video Button and Modal -->
+                                                <button onclick="openShareModal({{ $video->id }})"
+                                                    class="px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                                    Share Video
+                                                </button>
+                                            </div>
                                         </div>
+
 
                                         <!-- Share Modal -->
                                         <div id="share-modal-{{ $video->id }}"
@@ -116,20 +116,11 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <!-- Shared List with Collapse -->
+                                        <!-- Shared List -->
                                         <div class="mt-4">
-                                            <button onclick="toggleShareList({{ $video->id }})"
-                                                class="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none">
-                                                <span>Shared With ({{ $video->shares->count() }})</span>
-                                                <svg id="share-arrow-{{ $video->id }}"
-                                                    class="w-5 h-5 transform transition-transform" fill="none"
-                                                    stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M19 9l-7 7-7-7" />
-                                                </svg>
-                                            </button>
-                                            <div id="shares-list-{{ $video->id }}" class="mt-2 space-y-2 hidden">
-                                                @foreach ($video->shares->sortByDesc('created_at') as $share)
+                                            <h4 class="text-lg font-medium text-gray-900">Shared With</h4>
+                                            <div id="shares-list-{{ $video->id }}" class="mt-2 space-y-2">
+                                                @foreach ($video->shares as $share)
                                                     <div
                                                         class="flex items-center justify-between p-2 bg-gray-50 rounded-md">
                                                         <div>
@@ -139,17 +130,14 @@
                                                                 Expires: {{ $share->expires_at->format('Y-m-d H:i') }}
                                                             </span>
                                                         </div>
-                                                        <div class="flex items-center">
-                                                            @if ($share->is_active)
-                                                                <button onclick="revokeAccess({{ $share->id }})"
-                                                                    class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                    Revoke Access
-                                                                </button>
-                                                            @else
-                                                                <span class="text-xs text-gray-500">Access
-                                                                    Revoked</span>
-                                                            @endif
-                                                        </div>
+                                                        @if ($share->is_active)
+                                                            <button onclick="revokeAccess({{ $share->id }})"
+                                                                class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                Revoke Access
+                                                            </button>
+                                                        @else
+                                                            <span class="text-xs text-gray-500">Access Revoked</span>
+                                                        @endif
                                                     </div>
                                                 @endforeach
                                             </div>
@@ -448,14 +436,6 @@
             } catch (error) {
                 showNotification(error.message, 'error');
             }
-        }
-
-        function toggleShareList(videoId) {
-            const list = document.getElementById(`shares-list-${videoId}`);
-            const arrow = document.getElementById(`share-arrow-${videoId}`);
-
-            list.classList.toggle('hidden');
-            arrow.classList.toggle('rotate-180');
         }
     </script>
 </x-app-layout>

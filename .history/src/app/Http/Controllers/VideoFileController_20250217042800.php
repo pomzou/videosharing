@@ -173,10 +173,6 @@ class VideoFileController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            // 関連する共有情報とアクセスログを削除
-            $videoFile->shares()->delete();
-            $videoFile->accessLogs()->delete();
-
             // S3から動画を削除
             try {
                 Storage::disk('s3')->delete($videoFile->s3_path);
@@ -185,13 +181,22 @@ class VideoFileController extends Controller
                     'file_path' => $videoFile->s3_path,
                     'error' => $e->getMessage()
                 ]);
+                return response()->json(['error' => 'Failed to delete video file'], 500);
             }
 
             // データベースからレコードを削除
             $videoFile->delete();
 
+            // 操作ログを記録
+            $log = Log::error('Video deleted successfully', [
+                'user_id' => Auth::id(),
+                'video_id' => $videoFile->id,
+                'file_path' => $videoFile->s3_path
+            ]);
+
             return response()->json([
-                'message' => 'Video deleted successfully'
+                'message' => 'Video deleted successfully',
+                'status' => 'success'
             ]);
         } catch (\Exception $e) {
             $log = Log::error('Failed to delete video', [

@@ -66,70 +66,85 @@
 
                                         <!-- Video Controls -->
                                         <div class="flex justify-between items-center mt-4 space-x-2">
-                                            <button onclick="openShareModal({{ $video->id }})"
-                                                class="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                                Share Video
-                                            </button>
-                                            <button onclick="confirmDelete({{ $video->id }})"
-                                                class="flex-1 px-4 py-2 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                                Delete Video
-                                            </button>
-                                        </div>
+                                            <div class="flex space-x-2">
+                                                <!-- Action Buttons -->
+                                                <div class="flex space-x-2">
+                                                    <button id="generate-btn-{{ $video->id }}"
+                                                        onclick="generateSignedUrl({{ $video->id }})"
+                                                        class="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                        Generate Download Link
+                                                    </button>
 
-                                        <!-- Share Modal -->
-                                        <div id="share-modal-{{ $video->id }}"
-                                            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                                            <div
-                                                class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                                                <div class="mt-3">
-                                                    <h3 class="text-lg font-medium text-gray-900">Share Video</h3>
-                                                    <div class="mt-2">
-                                                        <form onsubmit="shareVideo(event, {{ $video->id }})">
-                                                            <div class="mt-4">
-                                                                <label for="email-{{ $video->id }}"
-                                                                    class="block text-sm font-medium text-gray-700">Email</label>
-                                                                <input type="email" id="email-{{ $video->id }}"
-                                                                    required
-                                                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                                            </div>
-                                                            <div class="mt-4">
-                                                                <label for="expires-{{ $video->id }}"
-                                                                    class="block text-sm font-medium text-gray-700">Expires
-                                                                    At</label>
-                                                                <input type="datetime-local"
-                                                                    id="expires-{{ $video->id }}" required
-                                                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                                            </div>
-                                                            <div class="mt-4 flex justify-end space-x-3">
-                                                                <button type="button"
-                                                                    onclick="closeShareModal({{ $video->id }})"
-                                                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                                    Cancel
-                                                                </button>
-                                                                <button type="submit"
-                                                                    class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                                                    Share
-                                                                </button>
-                                                            </div>
-                                                        </form>
-                                                    </div>
+                                                    <button onclick="openShareModal({{ $video->id }})"
+                                                        class="px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                                        Share Video
+                                                    </button>
+
+                                                    <button onclick="confirmDelete({{ $video->id }})"
+                                                        class="px-3 py-2 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                                        Delete Video
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
-                                        <!-- Shared List with Collapse -->
-                                        <div class="mt-4">
-                                            <button onclick="toggleShareList({{ $video->id }})"
-                                                class="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none">
-                                                <span>Shared With ({{ $video->shares->count() }})</span>
-                                                <svg id="share-arrow-{{ $video->id }}"
-                                                    class="w-5 h-5 transform transition-transform" fill="none"
-                                                    stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M19 9l-7 7-7-7" />
-                                                </svg>
-                                            </button>
-                                            <div id="shares-list-{{ $video->id }}" class="mt-2 space-y-2 hidden">
-                                                @foreach ($video->shares->sortByDesc('created_at') as $share)
+                                    </div>
+
+
+                                    <!-- Share Modal -->
+                                    <div id="share-modal-{{ $video->id }}"
+                                        class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                                        <div
+                                            class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                                            <div class="mt-3">
+                                                <h3 class="text-lg font-medium text-gray-900">Share Video</h3>
+                                                <div class="mt-2">
+                                                    <form onsubmit="shareVideo(event, {{ $video->id }})">
+                                                        <div class="mt-4">
+                                                            <label for="email-{{ $video->id }}"
+                                                                class="block text-sm font-medium text-gray-700">Email</label>
+                                                            <input type="email" id="email-{{ $video->id }}"
+                                                                required
+                                                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                        </div>
+                                                        <div class="mt-4">
+                                                            <label for="expires-{{ $video->id }}"
+                                                                class="block text-sm font-medium text-gray-700">Expires
+                                                                At</label>
+                                                            <input type="datetime-local"
+                                                                id="expires-{{ $video->id }}" required
+                                                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                        </div>
+                                                        <div class="mt-4 flex justify-end space-x-3">
+                                                            <button type="button"
+                                                                onclick="closeShareModal({{ $video->id }})"
+                                                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                                Cancel
+                                                            </button>
+                                                            <button type="submit"
+                                                                class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                                Share
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Shared List Section -->
+                                    <div class="mt-4">
+                                        <button onclick="toggleSection('shares-{{ $video->id }}')"
+                                            class="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                                            <span>Shared With</span>
+                                            <svg id="shares-arrow-{{ $video->id }}"
+                                                class="w-5 h-5 transform transition-transform duration-200"
+                                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                        <div id="shares-{{ $video->id }}" class="hidden mt-2">
+                                            <div class="space-y-2">
+                                                @forelse($video->shares->where('is_active', true)->sortByDesc('created_at') as $share)
                                                     <div
                                                         class="flex items-center justify-between p-2 bg-gray-50 rounded-md">
                                                         <div>
@@ -139,110 +154,104 @@
                                                                 Expires: {{ $share->expires_at->format('Y-m-d H:i') }}
                                                             </span>
                                                         </div>
-                                                        <div class="flex items-center">
-                                                            @if ($share->is_active)
-                                                                <button onclick="revokeAccess({{ $share->id }})"
-                                                                    class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                    Revoke Access
-                                                                </button>
-                                                            @else
-                                                                <span class="text-xs text-gray-500">Access
-                                                                    Revoked</span>
-                                                            @endif
-                                                        </div>
+                                                        <button onclick="revokeAccess({{ $share->id }})"
+                                                            class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                            Revoke Access
+                                                        </button>
                                                     </div>
-                                                @endforeach
+                                                @empty
+                                                    <p class="text-sm text-gray-500 p-2">No active shares</p>
+                                                @endforelse
                                             </div>
-                                        </div>
-
-                                        <!-- Delete Confirmation Modal -->
-                                        <div id="delete-modal-{{ $video->id }}"
-                                            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                                            <div
-                                                class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                                                <div class="mt-3 text-center">
-                                                    <div
-                                                        class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                                                        <svg class="h-6 w-6 text-red-600" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                        </svg>
-                                                    </div>
-                                                    <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">
-                                                        Permanent Delete</h3>
-                                                    <div class="mt-2 px-7 py-3">
-                                                        <p class="text-sm text-gray-500">
-                                                            This will permanently delete this video from both the
-                                                            website and storage. This action cannot be undone and the
-                                                            video cannot be recovered.
-                                                        </p>
-                                                    </div>
-                                                    <div class="items-center px-4 py-3">
-                                                        <button onclick="deleteVideo({{ $video->id }})"
-                                                            class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
-                                                            Permanently Delete
-                                                        </button>
-                                                        <button
-                                                            onclick="document.getElementById('delete-modal-{{ $video->id }}').classList.add('hidden')"
-                                                            class="ml-3 px-4 py-2 bg-gray-100 text-gray-700 text-base font-medium rounded-md shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500">
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Download Link Section -->
-                                        <div class="space-y-3">
-                                            @if ($video->url_expires_at && $video->url_expires_at->isFuture())
-                                                <div id="timer-{{ $video->id }}" class="text-sm text-gray-600">
-                                                    <p class="font-medium">Link expires:
-                                                        {{ $video->url_expires_at->diffForHumans() }}</p>
-                                                    <p>Time remaining: <span
-                                                            class="text-indigo-600 font-medium"></span>
-                                                    </p>
-                                                </div>
-                                                <div id="url-{{ $video->id }}" class="space-y-2">
-                                                    <div class="flex items-center gap-2">
-                                                        <input type="text" id="url-input-{{ $video->id }}"
-                                                            value="{{ $video->current_signed_url }}"
-                                                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                            readonly>
-                                                        <button onclick="copyUrl({{ $video->id }})"
-                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                            Copy
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            @else
-                                                <button id="generate-btn-{{ $video->id }}"
-                                                    onclick="generateSignedUrl({{ $video->id }})"
-                                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                                    Generate Download Link
-                                                </button>
-                                                <div id="url-{{ $video->id }}" class="space-y-2 hidden">
-                                                    <div class="flex items-center gap-2">
-                                                        <input type="text" id="url-input-{{ $video->id }}"
-                                                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                            readonly>
-                                                        <button onclick="copyUrl({{ $video->id }})"
-                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                            Copy
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            @endif
                                         </div>
                                     </div>
+                                    <!-- Delete Confirmation Modal -->
+                                    <div id="delete-modal-{{ $video->id }}"
+                                        class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                                        <div
+                                            class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                                            <div class="mt-3 text-center">
+                                                <div
+                                                    class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                                                    <svg class="h-6 w-6 text-red-600" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                    </svg>
+                                                </div>
+                                                <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">
+                                                    Permanent Delete</h3>
+                                                <div class="mt-2 px-7 py-3">
+                                                    <p class="text-sm text-gray-500">
+                                                        This will permanently delete this video from both the
+                                                        website and storage. This action cannot be undone and the
+                                                        video cannot be recovered.
+                                                    </p>
+                                                </div>
+                                                <div class="items-center px-4 py-3">
+                                                    <button onclick="deleteVideo({{ $video->id }})"
+                                                        class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                                                        Permanently Delete
+                                                    </button>
+                                                    <button
+                                                        onclick="document.getElementById('delete-modal-{{ $video->id }}').classList.add('hidden')"
+                                                        class="ml-3 px-4 py-2 bg-gray-100 text-gray-700 text-base font-medium rounded-md shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Download Link Section -->
+                                    <div class="space-y-3">
+                                        @if ($video->url_expires_at && $video->url_expires_at->isFuture())
+                                            <div id="timer-{{ $video->id }}" class="text-sm text-gray-600">
+                                                <p class="font-medium">Link expires:
+                                                    {{ $video->url_expires_at->diffForHumans() }}</p>
+                                                <p>Time remaining: <span class="text-indigo-600 font-medium"></span>
+                                                </p>
+                                            </div>
+                                            <div id="url-{{ $video->id }}" class="space-y-2">
+                                                <div class="flex items-center gap-2">
+                                                    <input type="text" id="url-input-{{ $video->id }}"
+                                                        value="{{ $video->current_signed_url }}"
+                                                        class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        readonly>
+                                                    <button onclick="copyUrl({{ $video->id }})"
+                                                        class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                        Copy
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <button id="generate-btn-{{ $video->id }}"
+                                                onclick="generateSignedUrl({{ $video->id }})"
+                                                class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                Generate Download Link
+                                            </button>
+                                            <div id="url-{{ $video->id }}" class="space-y-2 hidden">
+                                                <div class="flex items-center gap-2">
+                                                    <input type="text" id="url-input-{{ $video->id }}"
+                                                        class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        readonly>
+                                                    <button onclick="copyUrl({{ $video->id }})"
+                                                        class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                        Copy
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </div>
                                 </div>
-                            @endforeach
                         </div>
-                    @endif
+                    @endforeach
                 </div>
+                @endif
             </div>
         </div>
+    </div>
     </div>
 
     <script>
@@ -448,14 +457,6 @@
             } catch (error) {
                 showNotification(error.message, 'error');
             }
-        }
-
-        function toggleShareList(videoId) {
-            const list = document.getElementById(`shares-list-${videoId}`);
-            const arrow = document.getElementById(`share-arrow-${videoId}`);
-
-            list.classList.toggle('hidden');
-            arrow.classList.toggle('rotate-180');
         }
     </script>
 </x-app-layout>

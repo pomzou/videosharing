@@ -65,16 +65,25 @@
                                         </div>
 
                                         <!-- Video Controls -->
-                                        <div class="flex justify-between items-center mt-4 space-x-2">
-                                            <button onclick="openShareModal({{ $video->id }})"
-                                                class="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                                Share Video
-                                            </button>
-                                            <button onclick="confirmDelete({{ $video->id }})"
-                                                class="flex-1 px-4 py-2 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                                Delete Video
-                                            </button>
+                                        <div class="flex justify-between items-center space-x-2">
+                                            <div class="flex space-x-2">
+                                                <button onclick="generateSignedUrl({{ $video->id }})"
+                                                    class="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                    Generate Download Link
+                                                </button>
+
+                                                <button onclick="openShareModal({{ $video->id }})"
+                                                    class="px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                                    Share Video
+                                                </button>
+
+                                                <button onclick="confirmDelete({{ $video->id }})"
+                                                    class="px-3 py-2 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                                    Delete Video
+                                                </button>
+                                            </div>
                                         </div>
+
 
                                         <!-- Share Modal -->
                                         <div id="share-modal-{{ $video->id }}"
@@ -116,45 +125,42 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <!-- Shared List with Collapse -->
+                                        <!-- Shared List Section -->
                                         <div class="mt-4">
-                                            <button onclick="toggleShareList({{ $video->id }})"
-                                                class="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none">
-                                                <span>Shared With ({{ $video->shares->count() }})</span>
-                                                <svg id="share-arrow-{{ $video->id }}"
-                                                    class="w-5 h-5 transform transition-transform" fill="none"
-                                                    stroke="currentColor" viewBox="0 0 24 24">
+                                            <button onclick="toggleSection('shares-{{ $video->id }}')"
+                                                class="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                                                <span>Shared With</span>
+                                                <svg id="shares-arrow-{{ $video->id }}"
+                                                    class="w-5 h-5 transform transition-transform duration-200"
+                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         stroke-width="2" d="M19 9l-7 7-7-7" />
                                                 </svg>
                                             </button>
-                                            <div id="shares-list-{{ $video->id }}" class="mt-2 space-y-2 hidden">
-                                                @foreach ($video->shares->sortByDesc('created_at') as $share)
-                                                    <div
-                                                        class="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-                                                        <div>
-                                                            <span
-                                                                class="text-sm text-gray-600">{{ $share->email }}</span>
-                                                            <span class="text-xs text-gray-500 ml-2">
-                                                                Expires: {{ $share->expires_at->format('Y-m-d H:i') }}
-                                                            </span>
+                                            <div id="shares-{{ $video->id }}" class="hidden mt-2">
+                                                <div class="space-y-2">
+                                                    @forelse($video->shares->where('is_active', true)->sortByDesc('created_at') as $share)
+                                                        <div
+                                                            class="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                                                            <div>
+                                                                <span
+                                                                    class="text-sm text-gray-600">{{ $share->email }}</span>
+                                                                <span class="text-xs text-gray-500 ml-2">
+                                                                    Expires:
+                                                                    {{ $share->expires_at->format('Y-m-d H:i') }}
+                                                                </span>
+                                                            </div>
+                                                            <button onclick="revokeAccess({{ $share->id }})"
+                                                                class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                Revoke Access
+                                                            </button>
                                                         </div>
-                                                        <div class="flex items-center">
-                                                            @if ($share->is_active)
-                                                                <button onclick="revokeAccess({{ $share->id }})"
-                                                                    class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                    Revoke Access
-                                                                </button>
-                                                            @else
-                                                                <span class="text-xs text-gray-500">Access
-                                                                    Revoked</span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                @endforeach
+                                                    @empty
+                                                        <p class="text-sm text-gray-500 p-2">No active shares</p>
+                                                    @endforelse
+                                                </div>
                                             </div>
                                         </div>
-
                                         <!-- Delete Confirmation Modal -->
                                         <div id="delete-modal-{{ $video->id }}"
                                             class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -195,45 +201,20 @@
                                         </div>
 
                                         <!-- Download Link Section -->
-                                        <div class="space-y-3">
-                                            @if ($video->url_expires_at && $video->url_expires_at->isFuture())
-                                                <div id="timer-{{ $video->id }}" class="text-sm text-gray-600">
-                                                    <p class="font-medium">Link expires:
-                                                        {{ $video->url_expires_at->diffForHumans() }}</p>
-                                                    <p>Time remaining: <span
-                                                            class="text-indigo-600 font-medium"></span>
-                                                    </p>
-                                                </div>
-                                                <div id="url-{{ $video->id }}" class="space-y-2">
-                                                    <div class="flex items-center gap-2">
-                                                        <input type="text" id="url-input-{{ $video->id }}"
-                                                            value="{{ $video->current_signed_url }}"
-                                                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                            readonly>
-                                                        <button onclick="copyUrl({{ $video->id }})"
-                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                            Copy
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            @else
-                                                <button id="generate-btn-{{ $video->id }}"
-                                                    onclick="generateSignedUrl({{ $video->id }})"
-                                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                                    Generate Download Link
-                                                </button>
-                                                <div id="url-{{ $video->id }}" class="space-y-2 hidden">
-                                                    <div class="flex items-center gap-2">
-                                                        <input type="text" id="url-input-{{ $video->id }}"
-                                                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                            readonly>
-                                                        <button onclick="copyUrl({{ $video->id }})"
-                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                            Copy
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            @endif
+                                        <div class="mt-4">
+                                            <button onclick="toggleSection('download-{{ $video->id }}')"
+                                                class="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                                                <span>Download Link</span>
+                                                <svg id="download-arrow-{{ $video->id }}"
+                                                    class="w-5 h-5 transform transition-transform duration-200"
+                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+                                            <div id="download-{{ $video->id }}" class="hidden mt-2">
+                                                <!-- Download Link Content -->
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -304,8 +285,63 @@
             };
         });
 
-        function confirmDelete(videoId) {
-            document.getElementById(`delete-modal-${videoId}`).classList.remove('hidden');
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            let arrowId;
+
+            if (sectionId.includes("shares-section")) {
+                arrowId = sectionId.replace("shares-section", "shares-arrow");
+            } else if (sectionId.includes("download-")) {
+                arrowId = sectionId.replace("download-", "download-arrow-");
+            }
+
+            const arrow = document.getElementById(arrowId);
+
+            section.classList.toggle("hidden");
+            if (arrow) {
+                arrow.classList.toggle("rotate-180");
+            }
+        }
+
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-md ${
+            type === 'success' ? 'bg-green-500' : 'bg-red-500'
+        } text-white shadow-lg transition-opacity duration-500`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const remainingSeconds = seconds % 60;
+            return `${hours}h ${minutes}m ${remainingSeconds}s`;
+        }
+
+        function updateTimer(videoId, expiryTime) {
+            const timerElement = document.querySelector(`#timer-${videoId} span`);
+            if (!timerElement) return;
+
+            const interval = setInterval(() => {
+                const now = new Date().getTime();
+                const timeLeft = Math.floor((expiryTime - now) / 1000);
+
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    document.getElementById(`url-${videoId}`).classList.add('hidden');
+                    document.getElementById(`timer-${videoId}`).classList.add('hidden');
+                    return;
+                }
+
+                timerElement.textContent = formatTime(timeLeft);
+            }, 1000);
         }
 
         async function generateSignedUrl(videoId) {
@@ -318,45 +354,68 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    throw new Error('Failed to generate URL');
                 }
 
                 const data = await response.json();
 
                 if (data.url) {
-                    const urlDiv = document.getElementById(`url-${videoId}`);
-                    const urlInput = document.getElementById(`url-input-${videoId}`);
-                    const timerDiv = document.getElementById(`timer-${videoId}`);
-                    const generateBtn = document.getElementById(`generate-btn-${videoId}`);
+                    const downloadSection = document.getElementById(`download-${videoId}`);
+                    if (!downloadSection) return;
 
-                    urlInput.value = data.url;
-                    urlDiv.classList.remove('hidden');
-                    timerDiv.classList.remove('hidden');
-                    generateBtn.classList.add('hidden');
+                    downloadSection.innerHTML = `
+                    <div id="timer-${videoId}" class="text-sm text-gray-600">
+                        <p class="font-medium">Link expires: 24 hours from now</p>
+                        <p>Time remaining: <span class="text-indigo-600 font-medium"></span></p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text"
+                            id="url-input-${videoId}"
+                            value="${data.url}"
+                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            readonly
+                        >
+                        <button onclick="copyUrl(${videoId})"
+                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                        >
+                            Copy
+                        </button>
+                    </div>
+                `;
 
+                    // 表示とタイマー開始
+                    downloadSection.classList.remove('hidden');
                     const expiryTime = new Date(data.expires_at).getTime();
                     updateTimer(videoId, expiryTime);
-
                     showNotification('Download link generated successfully', 'success');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showNotification('Failed to generate download link. Please try again.', 'error');
+                showNotification('Failed to generate download link', 'error');
             }
         }
 
-        function showNotification(message, type) {
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 p-4 rounded-md ${
-        type === 'success' ? 'bg-green-500' : 'bg-red-500'
-    } text-white shadow-lg transition-opacity duration-500`;
-            notification.textContent = message;
-            document.body.appendChild(notification);
+        function copyUrl(videoId) {
+            const urlInput = document.getElementById(`url-input-${videoId}`);
+            if (urlInput) {
+                urlInput.select();
+                document.execCommand('copy');
+                showNotification('URL copied to clipboard', 'success');
+            }
+        }
 
-            setTimeout(() => {
-                notification.style.opacity = '0';
-                setTimeout(() => notification.remove(), 500);
-            }, 3000);
+        function openShareModal(videoId) {
+            const modal = document.getElementById(`share-modal-${videoId}`);
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeShareModal(videoId) {
+            const modal = document.getElementById(`share-modal-${videoId}`);
+            if (modal) {
+                modal.classList.add('hidden');
+            }
         }
 
         async function deleteVideo(videoId) {
@@ -370,10 +429,8 @@
                 });
 
                 if (response.ok) {
-                    // 成功時の処理
                     const element = document.getElementById(`video-${videoId}`).closest('.bg-white.rounded-lg');
                     element.remove();
-                    // 削除成功メッセージを表示
                     showNotification('Video deleted successfully', 'success');
                 } else {
                     throw new Error('Failed to delete video');
@@ -384,78 +441,16 @@
             }
         }
 
-        function openShareModal(videoId) {
-            document.getElementById(`share-modal-${videoId}`).classList.remove('hidden');
-        }
-
-        function closeShareModal(videoId) {
-            document.getElementById(`share-modal-${videoId}`).classList.add('hidden');
-        }
-
-        async function shareVideo(event, videoId) {
-            event.preventDefault();
-
-            const email = document.getElementById(`email-${videoId}`).value;
-            const expiresAt = document.getElementById(`expires-${videoId}`).value;
-
-            try {
-                const response = await fetch(`/videos/${videoId}/share`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        email,
-                        expires_at: expiresAt
-                    })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    showNotification('Video shared successfully', 'success');
-                    closeShareModal(videoId);
-                } else {
-                    throw new Error(data.error || 'Failed to share video');
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 既存の有効期限付きURLのタイマーを初期化
+            document.querySelectorAll('[id^="timer-"]').forEach(timer => {
+                const videoId = timer.id.replace('timer-', '');
+                const expiresAt = timer.getAttribute('data-expires-at');
+                if (expiresAt) {
+                    updateTimer(videoId, new Date(expiresAt).getTime());
                 }
-            } catch (error) {
-                showNotification(error.message, 'error');
-            }
-        }
-        async function revokeAccess(shareId) {
-            if (!confirm('Are you sure you want to revoke access?')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/shares/${shareId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    }
-                });
-
-                if (response.ok) {
-                    showNotification('Access revoked successfully', 'success');
-                    // ページをリロードするか、DOMを更新
-                    window.location.reload();
-                } else {
-                    throw new Error('Failed to revoke access');
-                }
-            } catch (error) {
-                showNotification(error.message, 'error');
-            }
-        }
-
-        function toggleShareList(videoId) {
-            const list = document.getElementById(`shares-list-${videoId}`);
-            const arrow = document.getElementById(`share-arrow-${videoId}`);
-
-            list.classList.toggle('hidden');
-            arrow.classList.toggle('rotate-180');
-        }
+            });
+        });
     </script>
 </x-app-layout>

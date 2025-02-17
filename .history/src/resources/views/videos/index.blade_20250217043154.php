@@ -449,13 +449,5 @@
                 showNotification(error.message, 'error');
             }
         }
-
-        function toggleShareList(videoId) {
-            const list = document.getElementById(`shares-list-${videoId}`);
-            const arrow = document.getElementById(`share-arrow-${videoId}`);
-
-            list.classList.toggle('hidden');
-            arrow.classList.toggle('rotate-180');
-        }
     </script>
 </x-app-layout>

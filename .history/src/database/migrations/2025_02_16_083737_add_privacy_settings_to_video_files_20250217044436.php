@@ -14,7 +14,7 @@ class AddPrivacyToVideoFilesTable extends Migration
     public function up()
     {
         Schema::table('video_files', function (Blueprint $table) {
-            // カラム追加の処理があればここに記述
+            // privacyカラムの追加などの処理
         });
     }
 
@@ -26,7 +26,6 @@ class AddPrivacyToVideoFilesTable extends Migration
     public function down()
     {
         Schema::table('video_files', function (Blueprint $table) {
-            // privacyカラムが存在する場合のみ削除
             if (Schema::hasColumn('video_files', 'privacy')) {
                 $table->dropColumn('privacy');
             }
