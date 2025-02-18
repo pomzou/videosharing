@@ -23,18 +23,72 @@ class VideoFileController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'video' => 'required|file|mimes:mp4,avi,mov|max:102400', // 100MB制限
+            'video' => [
+                'required',
+                'file',
+                'max:102400', // 100MB制限
+                'mimes:' . implode(',', [
+                    // 動画
+                    'mp4',
+                    'avi',
+                    'mov',
+                    'mkv',
+                    'webm',
+                    'flv',
+                    // 画像
+                    'jpg',
+                    'jpeg',
+                    'png',
+                    'gif',
+                    'bmp',
+                    'tiff',
+                    'webp',
+                    // 音声
+                    'mp3',
+                    'wav',
+                    'ogg',
+                    'flac',
+                    // 文書
+                    'pdf',
+                    'doc',
+                    'docx',
+                    'xls',
+                    'xlsx',
+                    'ppt',
+                    'pptx',
+                    'odt',
+                    'ods',
+                    'rtf',
+                    // 圧縮ファイル
+                    'zip',
+                    'rar',
+                    'tar',
+                    'gz',
+                    '7z',
+                    // コード・スクリプト
+                    'html',
+                    'css',
+                    'js',
+                    'php',
+                    'py',
+                    'java',
+                    'cpp',
+                    // テキスト
+                    'txt',
+                    'csv'
+                ])
+            ],
             'privacy' => 'required|in:public,private',
         ]);
 
         try {
             // ファイルの取得
-            $file = $request->file('video');
+            $file = $request->file('video');  // 'video' から変更が必要な場合は、フォームのname属性も変更する必要があります
             $originalName = $file->getClientOriginalName();
             $fileName = time() . '_' . $file->hashName();
 
             // S3にアップロード
-            $s3Path = 'videos/' . $fileName;
+            $s3Path = 'files/' . $fileName;  // 'videos' から 'files' に変更して汎用的に
             Storage::disk('s3')->put($s3Path, file_get_contents($file));
 
             // データベースに保存
@@ -51,9 +105,9 @@ class VideoFileController extends Controller
             ]);
 
             return redirect()->route('dashboard')
-                ->with('success', 'Video uploaded successfully.');
+                ->with('success', 'File uploaded successfully.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to upload video. ' . $e->getMessage());
+            return back()->with('error', 'Failed to upload file. ' . $e->getMessage());
         }
     }
 
