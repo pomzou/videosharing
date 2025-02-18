@@ -65,19 +65,39 @@ class VideoFileController extends Controller
 
         try {
             $request->validate([
-                'expires_at' => 'required|date|after:now'
+                'expires_at' => [
+                    'required',
+                    'date',
+                    'after:now',
+                    function ($attribute, $value, $fail) {
+                        $hours = now()->diffInHours(new \DateTime($value));
+                        if ($hours > 168) { // 7日間 = 168時間
+                            $fail('The expiry time cannot exceed 7 days.');
+                        }
+                    },
+                ]
             ]);
 
             $expiresAt = new \DateTime($request->expires_at);
+            $hours = now()->diffInHours($expiresAt);
 
-            $s3Client = new S3Client([
+            $credentials = [
                 'version' => 'latest',
                 'region'  => config('filesystems.disks.s3.region'),
                 'credentials' => [
                     'key'    => config('filesystems.disks.s3.key'),
                     'secret' => config('filesystems.disks.s3.secret'),
                 ],
-            ]);
+            ];
+
+            // 12時間以上の場合はIAM認証情報を使用
+            if ($hours >= 12) {
+                if (!config('filesystems.disks.s3.key') || !config('filesystems.disks.s3.secret')) {
+                    throw new \Exception('IAM credentials are required for URLs valid longer than 12 hours.');
+                }
+            }
+
+            $s3Client = new S3Client($credentials);
 
             $cmd = $s3Client->getCommand('GetObject', [
                 'Bucket' => config('filesystems.disks.s3.bucket'),
@@ -92,6 +112,11 @@ class VideoFileController extends Controller
                 'current_signed_url' => $signedUrl
             ]);
 
+            Log::info('Signed URL generated', [
+                'video_id' => $videoFile->id,
+                'expires_in_hours' => $hours
+            ]);
+
             return response()->json([
                 'url' => $signedUrl,
                 'expires_at' => $expiresAt->format('c')
@@ -101,7 +126,9 @@ class VideoFileController extends Controller
                 'video_id' => $videoFile->id,
                 'error' => $e->getMessage()
             ]);
-            return response()->json(['error' => 'Failed to generate signed URL'], 500);
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 

@@ -267,6 +267,11 @@
                                                                 3 Hours
                                                             </button>
                                                             <button
+                                                                onclick="generateWithPreset({{ $video->id }}, 12)"
+                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                12 Hours
+                                                            </button>
+                                                            <button
                                                                 onclick="generateWithPreset({{ $video->id }}, 24)"
                                                                 class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
                                                                 1 Day
@@ -275,11 +280,6 @@
                                                                 onclick="generateWithPreset({{ $video->id }}, 168)"
                                                                 class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
                                                                 7 Days
-                                                            </button>
-                                                            <button
-                                                                onclick="generateWithPreset({{ $video->id }}, 336)"
-                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                14 Days
                                                             </button>
                                                         </div>
 
@@ -291,7 +291,13 @@
                                                             <input type="datetime-local"
                                                                 id="custom-expiry-{{ $video->id }}"
                                                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                                                min="{{ now()->format('Y-m-d\TH:i') }}">
+                                                                min="{{ now()->format('Y-m-d\TH:i') }}"
+                                                                max="{{ now()->addDays(7)->format('Y-m-d\TH:i') }}">
+                                                            <p class="mt-1 text-sm text-gray-500">
+                                                                Note: Maximum allowed duration is 7 days. For durations
+                                                                over 12 hours, additional authentication will be
+                                                                required.
+                                                            </p>
                                                             <button onclick="generateWithCustom({{ $video->id }})"
                                                                 class="mt-2 w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
                                                                 Set Custom Time
@@ -448,6 +454,25 @@
                 return;
             }
             await generateSignedUrlWithExpiry(videoId, new Date(customExpiry).toISOString());
+        }
+
+        function generateWithCustom(videoId) {
+            const customExpiry = document.getElementById(`custom-expiry-${videoId}`).value;
+            if (!customExpiry) {
+                showNotification('Please select a custom expiry time', 'error');
+                return;
+            }
+
+            const expiryDate = new Date(customExpiry);
+            const now = new Date();
+            const hoursDiff = (expiryDate - now) / (1000 * 60 * 60);
+
+            if (hoursDiff > 168) {
+                showNotification('The expiry time cannot exceed 7 days', 'error');
+                return;
+            }
+
+            generateSignedUrlWithExpiry(videoId, customExpiry);
         }
 
         async function generateSignedUrlWithExpiry(videoId, expiryTime) {
