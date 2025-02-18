@@ -309,18 +309,26 @@ class VideoFileController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
-            $videoFile->update([
-                'url_expires_at' => null,
-                'current_signed_url' => null
-            ]);
+            DB::beginTransaction();
+            try {
+                $videoFile->update([
+                    'url_expires_at' => null,
+                    'current_signed_url' => null
+                ]);
+                DB::commit();
 
-            Log::info('URL access revoked', [
-                'video_id' => $videoFile->id
-            ]);
+                Log::info('URL access revoked', [
+                    'video_id' => $videoFile->id
+                ]);
 
-            return response()->json([
-                'message' => 'Access revoked successfully'
-            ]);
+                return response()->json([
+                    'message' => 'Access revoked successfully',
+                    'status' => 'success'
+                ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
         } catch (\Exception $e) {
             Log::error('Failed to revoke URL access', [
                 'video_id' => $videoFile->id,

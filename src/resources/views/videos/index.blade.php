@@ -303,12 +303,8 @@
                                                         <p>Time remaining: <span
                                                                 class="text-indigo-600 font-medium"></span></p>
                                                         <button onclick="revokeAccess({{ $video->id }})"
-                                                            class="px-2 py-1 text-sm font-medium text-red-600 hover:text-red-800 focus:outline-none">
-                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor"
-                                                                viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                    stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                            </svg>
+                                                            class="px-3 py-1 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 focus:outline-none">
+                                                            Revoke URL
                                                         </button>
                                                     </div>
                                                 </div>
@@ -843,7 +839,9 @@
         }
 
         async function revokeAccess(videoId) {
-            if (!confirm('Are you sure you want to revoke access to this URL?')) {
+            if (!confirm(
+                    'Are you sure you want to revoke access to this URL? This will invalidate the current download link.'
+                    )) {
                 return;
             }
 
@@ -860,22 +858,14 @@
                     throw new Error('Failed to revoke access');
                 }
 
-                // URL関連の要素を非表示
-                const urlDiv = document.getElementById(`url-${videoId}`);
-                const timerDiv = document.getElementById(`timer-${videoId}`);
-                const generateBtn = document.getElementById(`generate-btn-${videoId}`);
-
-                if (urlDiv) urlDiv.classList.add('hidden');
-                if (timerDiv) timerDiv.classList.add('hidden');
-                if (generateBtn) {
-                    generateBtn.classList.remove('hidden');
-                    generateBtn.textContent = 'Generate Download Link';
-                }
-
                 showNotification('Access revoked successfully', 'success');
+
+                // ページをリロード
+                window.location.reload();
+
             } catch (error) {
                 console.error('Error:', error);
-                showNotification(error.message, 'error');
+                showNotification('Failed to revoke access. Please try again.', 'error');
             }
         }
     </script>
