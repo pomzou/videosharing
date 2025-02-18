@@ -16,7 +16,8 @@
                     @else
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             @foreach ($videos as $video)
-                                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                                <div class="border rounded-lg overflow-hidden shadow-sm"
+                                    data-file-id="{{ $video->id }}">
                                     <!-- File Preview -->
                                     <div class="relative pt-[56.25%] bg-gray-100 rounded-lg overflow-hidden">
                                         @switch($video->getFileType())
@@ -40,7 +41,8 @@
                                                 <div
                                                     class="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800">
                                                     <audio controls class="w-3/4">
-                                                        <source src="{{ $video->preview_url }}" type="{{ $video->mime_type }}">
+                                                        <source src="{{ $video->preview_url }}"
+                                                            type="{{ $video->mime_type }}">
                                                     </audio>
                                                 </div>
                                             @break
@@ -269,23 +271,22 @@
                                                                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                                         </svg>
                                                     </div>
-                                                    <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">
-                                                        Permanent Delete</h3>
+                                                    <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">Delete
+                                                        File</h3>
                                                     <div class="mt-2 px-7 py-3">
                                                         <p class="text-sm text-gray-500">
-                                                            This will permanently delete this video from both the
-                                                            website and storage. This action cannot be undone and the
-                                                            video cannot be recovered.
+                                                            Are you sure you want to delete this file? This action
+                                                            cannot be undone.
                                                         </p>
                                                     </div>
                                                     <div class="items-center px-4 py-3">
                                                         <button onclick="deleteVideo({{ $video->id }})"
-                                                            class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
-                                                            Permanently Delete
+                                                            class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 mr-2">
+                                                            Delete
                                                         </button>
                                                         <button
                                                             onclick="document.getElementById('delete-modal-{{ $video->id }}').classList.add('hidden')"
-                                                            class="ml-3 px-4 py-2 bg-gray-100 text-gray-700 text-base font-medium rounded-md shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                                                            class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
                                                             Cancel
                                                         </button>
                                                     </div>
@@ -710,18 +711,28 @@
                     }
                 });
 
-                if (response.ok) {
-                    // 成功時の処理
-                    const element = document.getElementById(`video-${videoId}`).closest('.bg-white.rounded-lg');
-                    element.remove();
-                    // 削除成功メッセージを表示
-                    showNotification('Video deleted successfully', 'success');
-                } else {
-                    throw new Error('Failed to delete video');
+                if (!response.ok) {
+                    throw new Error('Failed to delete file');
                 }
+
+                const data = await response.json();
+
+                // ファイル要素の削除
+                const fileElement = document.querySelector(`[data-file-id="${videoId}"]`);
+                if (fileElement) {
+                    fileElement.remove();
+                }
+
+                // モーダルを閉じる
+                const modal = document.getElementById(`delete-modal-${videoId}`);
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
+
+                showNotification('File deleted successfully', 'success');
             } catch (error) {
-                console.error('Error:', error);
-                showNotification('Failed to delete video', 'error');
+                console.error('Delete error:', error);
+                showNotification('Failed to delete file', 'error');
             }
         }
 
