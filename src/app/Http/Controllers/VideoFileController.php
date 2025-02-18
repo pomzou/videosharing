@@ -113,6 +113,17 @@ class VideoFileController extends Controller
                 ->get();
 
             foreach ($videos as $video) {
+                // 期限切れの場合はURLをクリア
+                if ($video->url_expires_at && $video->url_expires_at->isPast()) {
+                    $video->update([
+                        'current_signed_url' => null,
+                        'url_expires_at' => null
+                    ]);
+                    $video->current_signed_url = null;
+                    $video->preview_url = null;
+                    continue;
+                }
+
                 try {
                     $s3Client = new S3Client([
                         'version' => 'latest',
@@ -128,27 +139,24 @@ class VideoFileController extends Controller
                         'Key'    => $video->s3_path
                     ]);
 
-                    $video->preview_url = (string) $s3Client->createPresignedRequest($cmd, '+1 hour')->getUri();
-
-                    if ($video->url_expires_at && $video->url_expires_at->isFuture()) {
-                        $video->current_signed_url = (string) $s3Client->createPresignedRequest($cmd, '+24 hours')->getUri();
+                    // プレビュー用URLは所有者のみ常に生成
+                    if ($video->user_id === Auth::id()) {
+                        $video->preview_url = (string) $s3Client->createPresignedRequest($cmd, '+1 hour')->getUri();
                     }
                 } catch (\Exception $e) {
-                    Log::error('Error generating signed URL', [
+                    Log::error('Failed to generate preview URL', [
                         'video_id' => $video->id,
                         'error' => $e->getMessage()
                     ]);
-                    $video->preview_url = null;
-                    $video->current_signed_url = null;
                 }
             }
 
             return view('videos.index', compact('videos'));
         } catch (\Exception $e) {
-            Log::error('Error fetching videos', [
+            Log::error('Error in video index', [
                 'error' => $e->getMessage()
             ]);
-            return view('videos.index')->with('error', 'Failed to load videos. Please try again.');
+            return view('videos.index')->with('error', 'Failed to load videos');
         }
     }
 

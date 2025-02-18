@@ -21,7 +21,7 @@
                                     <div class="relative pt-[56.25%]">
                                         <video id="video-{{ $video->id }}"
                                             class="absolute top-0 left-0 w-full h-full object-cover" controls
-                                            preload="metadata">
+                                            preload="metadata" onplay="checkExpiry(this, {{ $video->id }})">
                                             @if ($video->preview_url)
                                                 <source src="{{ $video->preview_url }}" type="{{ $video->mime_type }}">
                                             @endif
@@ -502,21 +502,25 @@
 
                 if (timeLeft <= 0) {
                     clearInterval(interval);
+                    const videoElement = document.getElementById(`video-${videoId}`);
+                    if (videoElement) {
+                        videoElement.pause();
+                        videoElement.src = ''; // URLをクリア
+                    }
                     document.getElementById(`url-${videoId}`).classList.add('hidden');
                     document.getElementById(`timer-${videoId}`).classList.add('hidden');
                     const generateBtn = document.getElementById(`generate-btn-${videoId}`);
                     if (generateBtn) {
                         generateBtn.classList.remove('hidden');
                     }
+                    showNotification('The download link has expired.', 'info');
                     return;
                 }
 
                 timerElement.textContent = formatTime(timeLeft);
             }
 
-            // 初回実行
             updateRemainingTime();
-            // 1秒ごとに更新
             const interval = setInterval(updateRemainingTime, 1000);
         }
 
@@ -645,6 +649,16 @@
 
             list.classList.toggle('hidden');
             arrow.classList.toggle('rotate-180');
+        }
+
+        function checkExpiry(videoElement, videoId) {
+            const timerDiv = document.getElementById(`timer-${videoId}`);
+            const hasExpired = timerDiv ? timerDiv.classList.contains('hidden') : true;
+
+            if (hasExpired) {
+                videoElement.pause();
+                showNotification('This video link has expired. Please generate a new download link.', 'error');
+            }
         }
     </script>
 </x-app-layout>
