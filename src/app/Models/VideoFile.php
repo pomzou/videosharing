@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
+
 
 class VideoFile extends Model
 {
@@ -43,5 +45,10 @@ class VideoFile extends Model
     public function accessLogs()
     {
         return $this->hasMany(AccessLog::class);
+    }
+
+    public function isOwner($userId = null)
+    {
+        return $this->user_id === ($userId ?? Auth::id());
     }
 }

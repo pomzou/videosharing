@@ -21,8 +21,9 @@
                                     <div class="relative pt-[56.25%]">
                                         <video id="video-{{ $video->id }}"
                                             class="absolute top-0 left-0 w-full h-full object-cover" controls
-                                            preload="metadata" onplay="checkExpiry(this, {{ $video->id }})">
-                                            @if ($video->preview_url)
+                                            preload="metadata"
+                                            onplay="checkExpiry(this, {{ $video->id }}, {{ $video->isOwner() ? 'true' : 'false' }})">
+                                            @if ($video->isOwner() || $video->preview_url)
                                                 <source src="{{ $video->preview_url }}" type="{{ $video->mime_type }}">
                                             @endif
                                             Your browser does not support the video tag.
@@ -198,90 +199,110 @@
 
                                         <!-- Download Link Section -->
                                         <div class="space-y-3">
-                                            <!-- Timer -->
-                                            <div id="timer-{{ $video->id }}"
-                                                class="text-sm text-gray-600 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
-                                                <p>Time remaining: <span class="text-indigo-600 font-medium"></span>
-                                                </p>
-                                            </div>
-
-                                            <!-- URL Input and Copy Button -->
-                                            <div id="url-{{ $video->id }}"
-                                                class="space-y-2 {{ !$video->url_expires_at || !$video->url_expires_at->isFuture() ? 'hidden' : '' }}">
-                                                <div class="flex items-center gap-2">
-                                                    <input type="text" id="url-input-{{ $video->id }}"
-                                                        value="{{ $video->current_signed_url ?? '' }}"
-                                                        class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                        readonly>
-                                                    <button onclick="copyUrl({{ $video->id }})"
-                                                        class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                        Copy
-                                                    </button>
+                                            <!-- Timer & URL Display (期限内の場合) -->
+                                            @if ($video->url_expires_at && $video->url_expires_at->isFuture())
+                                                <div id="timer-{{ $video->id }}" class="text-sm text-gray-600">
+                                                    <p>Time remaining: <span
+                                                            class="text-indigo-600 font-medium"></span></p>
                                                 </div>
-                                            </div>
-
-                                            <!-- Generate Button -->
-                                            <button id="generate-btn-{{ $video->id }}"
-                                                onclick="showExpiryOptions({{ $video->id }})"
-                                                class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 {{ $video->url_expires_at && $video->url_expires_at->isFuture() ? 'hidden' : '' }}">
-                                                Generate Download Link
-                                            </button>
-
-                                            <!-- Expiry Options Modal -->
-                                            <div id="expiry-modal-{{ $video->id }}"
-                                                class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                                                <div
-                                                    class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                                                    <div class="mt-3">
-                                                        <h3 class="text-lg font-medium text-gray-900">Select Expiry
-                                                            Time</h3>
-                                                        <div class="mt-4 space-y-3">
-                                                            <!-- Preset buttons -->
-                                                            <div class="grid grid-cols-2 gap-2">
-                                                                <button
-                                                                    onclick="generateWithPreset({{ $video->id }}, 3)"
-                                                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                    3 Hours
-                                                                </button>
-                                                                <button
-                                                                    onclick="generateWithPreset({{ $video->id }}, 24)"
-                                                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                    1 Day
-                                                                </button>
-                                                                <button
-                                                                    onclick="generateWithPreset({{ $video->id }}, 168)"
-                                                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                    7 Days
-                                                                </button>
-                                                                <button
-                                                                    onclick="generateWithPreset({{ $video->id }}, 336)"
-                                                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                    14 Days
-                                                                </button>
+                                                <div id="url-{{ $video->id }}" class="space-y-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <input type="text" id="url-input-{{ $video->id }}"
+                                                            value="{{ $video->current_signed_url ?? '' }}"
+                                                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                            readonly>
+                                                        <button onclick="copyUrl({{ $video->id }})"
+                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                            Copy
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <!-- 期限切れメッセージ (期限切れの場合) -->
+                                                @if ($video->url_expires_at && $video->url_expires_at->isPast())
+                                                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                                                        <div class="flex">
+                                                            <div class="flex-shrink-0">
+                                                                <svg class="h-5 w-5 text-yellow-400"
+                                                                    viewBox="0 0 20 20" fill="currentColor">
+                                                                    <path fill-rule="evenodd"
+                                                                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                                                        clip-rule="evenodd" />
+                                                                </svg>
                                                             </div>
-
-                                                            <!-- Custom datetime picker -->
-                                                            <div class="mt-4">
-                                                                <label
-                                                                    class="block text-sm font-medium text-gray-700">Custom
-                                                                    Expiry Time</label>
-                                                                <input type="datetime-local"
-                                                                    id="custom-expiry-{{ $video->id }}"
-                                                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                                                    min="{{ now()->format('Y-m-d\TH:i') }}">
-                                                                <button
-                                                                    onclick="generateWithCustom({{ $video->id }})"
-                                                                    class="mt-2 w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
-                                                                    Set Custom Time
-                                                                </button>
+                                                            <div class="ml-3">
+                                                                <p class="text-sm text-yellow-700">
+                                                                    This download link has expired. Would you like to
+                                                                    extend it?
+                                                                </p>
                                                             </div>
+                                                        </div>
+                                                    </div>
+                                                @endif
 
-                                                            <!-- Cancel button -->
-                                                            <button onclick="closeExpiryModal({{ $video->id }})"
-                                                                class="mt-4 w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                                                                Cancel
+                                                <!-- Generate/Extend Button -->
+                                                <button id="generate-btn-{{ $video->id }}"
+                                                    onclick="showExpiryOptions({{ $video->id }})"
+                                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                    {{ $video->url_expires_at && $video->url_expires_at->isPast() ? 'Extend Access' : 'Generate Download Link' }}
+                                                </button>
+                                            @endif
+                                        </div>
+
+                                        <!-- Expiry Options Modal (常に存在) -->
+                                        <div id="expiry-modal-{{ $video->id }}"
+                                            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                                            <div
+                                                class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                                                <div class="mt-3">
+                                                    <h3 class="text-lg font-medium text-gray-900">
+                                                        {{ $video->url_expires_at && $video->url_expires_at->isPast() ? 'Extend Access Period' : 'Select Expiry Time' }}
+                                                    </h3>
+                                                    <div class="mt-4 space-y-3">
+                                                        <!-- Preset buttons -->
+                                                        <div class="grid grid-cols-2 gap-2">
+                                                            <button
+                                                                onclick="generateWithPreset({{ $video->id }}, 3)"
+                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                3 Hours
+                                                            </button>
+                                                            <button
+                                                                onclick="generateWithPreset({{ $video->id }}, 24)"
+                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                1 Day
+                                                            </button>
+                                                            <button
+                                                                onclick="generateWithPreset({{ $video->id }}, 168)"
+                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                7 Days
+                                                            </button>
+                                                            <button
+                                                                onclick="generateWithPreset({{ $video->id }}, 336)"
+                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                14 Days
                                                             </button>
                                                         </div>
+
+                                                        <!-- Custom datetime picker -->
+                                                        <div class="mt-4">
+                                                            <label
+                                                                class="block text-sm font-medium text-gray-700">Custom
+                                                                Expiry Time</label>
+                                                            <input type="datetime-local"
+                                                                id="custom-expiry-{{ $video->id }}"
+                                                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                                                min="{{ now()->format('Y-m-d\TH:i') }}">
+                                                            <button onclick="generateWithCustom({{ $video->id }})"
+                                                                class="mt-2 w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
+                                                                Set Custom Time
+                                                            </button>
+                                                        </div>
+
+                                                        <!-- Cancel button -->
+                                                        <button onclick="closeExpiryModal({{ $video->id }})"
+                                                            class="mt-4 w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                                                            Cancel
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -502,16 +523,18 @@
 
                 if (timeLeft <= 0) {
                     clearInterval(interval);
+                    // 非所有者の場合のみURLをクリア
                     const videoElement = document.getElementById(`video-${videoId}`);
-                    if (videoElement) {
+                    if (videoElement && !videoElement.hasAttribute('data-owner')) {
                         videoElement.pause();
-                        videoElement.src = ''; // URLをクリア
+                        videoElement.src = '';
                     }
                     document.getElementById(`url-${videoId}`).classList.add('hidden');
                     document.getElementById(`timer-${videoId}`).classList.add('hidden');
                     const generateBtn = document.getElementById(`generate-btn-${videoId}`);
                     if (generateBtn) {
                         generateBtn.classList.remove('hidden');
+                        generateBtn.textContent = 'Extend Access';
                     }
                     showNotification('The download link has expired.', 'info');
                     return;
@@ -651,7 +674,12 @@
             arrow.classList.toggle('rotate-180');
         }
 
-        function checkExpiry(videoElement, videoId) {
+        function checkExpiry(videoElement, videoId, isOwner) {
+            if (isOwner) {
+                // 所有者は常に再生可能
+                return;
+            }
+
             const timerDiv = document.getElementById(`timer-${videoId}`);
             const hasExpired = timerDiv ? timerDiv.classList.contains('hidden') : true;
 

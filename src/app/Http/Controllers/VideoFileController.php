@@ -113,17 +113,6 @@ class VideoFileController extends Controller
                 ->get();
 
             foreach ($videos as $video) {
-                // 期限切れの場合はURLをクリア
-                if ($video->url_expires_at && $video->url_expires_at->isPast()) {
-                    $video->update([
-                        'current_signed_url' => null,
-                        'url_expires_at' => null
-                    ]);
-                    $video->current_signed_url = null;
-                    $video->preview_url = null;
-                    continue;
-                }
-
                 try {
                     $s3Client = new S3Client([
                         'version' => 'latest',
@@ -139,12 +128,17 @@ class VideoFileController extends Controller
                         'Key'    => $video->s3_path
                     ]);
 
-                    // プレビュー用URLは所有者のみ常に生成
-                    if ($video->user_id === Auth::id()) {
+                    // 所有者は常にプレビュー可能
+                    if ($video->isOwner()) {
                         $video->preview_url = (string) $s3Client->createPresignedRequest($cmd, '+1 hour')->getUri();
                     }
+
+                    // 共有URLは期限切れチェック
+                    if ($video->url_expires_at && $video->url_expires_at->isPast()) {
+                        $video->current_signed_url = null;
+                    }
                 } catch (\Exception $e) {
-                    Log::error('Failed to generate preview URL', [
+                    Log::error('Error generating URL', [
                         'video_id' => $video->id,
                         'error' => $e->getMessage()
                     ]);
