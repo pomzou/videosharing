@@ -17,17 +17,97 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             @foreach ($videos as $video)
                                 <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                                    <!-- Video Preview -->
-                                    <div class="relative pt-[56.25%]">
-                                        <video id="video-{{ $video->id }}"
-                                            class="absolute top-0 left-0 w-full h-full object-cover" controls
-                                            preload="metadata"
-                                            onplay="checkExpiry(this, {{ $video->id }}, {{ $video->isOwner() ? 'true' : 'false' }})">
-                                            @if ($video->isOwner() || $video->preview_url)
-                                                <source src="{{ $video->preview_url }}" type="{{ $video->mime_type }}">
-                                            @endif
-                                            Your browser does not support the video tag.
-                                        </video>
+                                    <!-- File Preview -->
+                                    <div class="relative pt-[56.25%] bg-gray-100 rounded-lg overflow-hidden">
+                                        @switch($video->getFileType())
+                                            @case('video')
+                                                <video id="video-{{ $video->id }}"
+                                                    class="absolute top-0 left-0 w-full h-full object-cover" controls
+                                                    preload="metadata"
+                                                    onplay="checkExpiry(this, {{ $video->id }}, {{ $video->isOwner() ? 'true' : 'false' }})">
+                                                    @if ($video->isOwner() || $video->preview_url)
+                                                        <source src="{{ $video->preview_url }}" type="{{ $video->mime_type }}">
+                                                    @endif
+                                                </video>
+                                            @break
+
+                                            @case('image')
+                                                <img src="{{ $video->preview_url }}" alt="{{ $video->title }}"
+                                                    class="absolute top-0 left-0 w-full h-full object-contain">
+                                            @break
+
+                                            @case('audio')
+                                                <div
+                                                    class="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800">
+                                                    <audio controls class="w-3/4">
+                                                        <source src="{{ $video->preview_url }}" type="{{ $video->mime_type }}">
+                                                    </audio>
+                                                </div>
+                                            @break
+
+                                            @case('pdf')
+                                                <iframe src="{{ $video->preview_url }}"
+                                                    class="absolute top-0 left-0 w-full h-full" type="application/pdf"></iframe>
+                                            @break
+
+                                            @case('text')
+                                                <div class="absolute top-0 left-0 w-full h-full overflow-auto p-4 bg-white">
+                                                    @if ($video->isOwner())
+                                                        <pre class="text-sm whitespace-pre-wrap">{{ Storage::disk('s3')->get($video->s3_path) }}</pre>
+                                                    @endif
+                                                </div>
+                                            @break
+
+                                            @default
+                                                <div
+                                                    class="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                                                    <div class="text-center">
+                                                        <div class="flex justify-center mb-4">
+                                                            @switch($video->getFileType())
+                                                                @case('document')
+                                                                    <svg class="w-16 h-16 text-gray-400" fill="none"
+                                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                                            stroke-width="2"
+                                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                    </svg>
+                                                                @break
+
+                                                                @case('spreadsheet')
+                                                                    <svg class="w-16 h-16 text-gray-400" fill="none"
+                                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                                            stroke-width="2"
+                                                                            d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                    </svg>
+                                                                @break
+
+                                                                @case('archive')
+                                                                    <svg class="w-16 h-16 text-gray-400" fill="none"
+                                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                                            stroke-width="2"
+                                                                            d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                                                    </svg>
+                                                                @break
+
+                                                                @default
+                                                                    <svg class="w-16 h-16 text-gray-400" fill="none"
+                                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                                            stroke-width="2"
+                                                                            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                                    </svg>
+                                                            @endswitch
+                                                        </div>
+                                                        <p class="text-gray-500">
+                                                            {{ strtoupper(pathinfo($video->original_name, PATHINFO_EXTENSION)) }}
+                                                            File</p>
+                                                        <p class="text-sm text-gray-400">
+                                                            {{ number_format($video->file_size / 1024 / 1024, 2) }} MB</p>
+                                                    </div>
+                                                </div>
+                                        @endswitch
                                     </div>
 
                                     <!-- Video Info -->
@@ -36,35 +116,51 @@
                                             <h3 class="text-lg font-semibold text-gray-900">{{ $video->title }}</h3>
                                             <p class="mt-1 text-sm text-gray-600">{{ $video->description }}</p>
                                         </div>
-
+                                        <!-- 情報リスト -->
                                         <div class="space-y-2">
-                                            <div class="flex items-center text-sm text-gray-500">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M9 7h6m0 10H9m12-7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h14a2 2 0 002-2v-6z" />
-                                                </svg>
-                                                <span>{{ number_format($video->file_size / 1024 / 1024, 2) }} MB</span>
-                                            </div>
-                                            <div class="flex items-center text-sm text-gray-500">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                <span>{{ $video->created_at->diffForHumans() }}</span>
-                                            </div>
-                                            <div class="flex items-center text-sm text-gray-500">
-                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                                </svg>
-                                                <span>{{ ucfirst($video->privacy) }}</span>
-                                            </div>
+                                            <ul class="space-y-1 text-sm text-gray-600">
+                                                <li class="flex items-center">
+                                                    <svg class="w-5 h-5 mr-2 text-gray-500" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M9 7h6m0 10H9m12-7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h14a2 2 0 002-2v-6z" />
+                                                    </svg>
+                                                    <span><strong>Type:</strong>
+                                                        {{ strtoupper(pathinfo($video->original_name, PATHINFO_EXTENSION)) }}</span>
+                                                </li>
+                                                <li class="flex items-center">
+                                                    <svg class="w-5 h-5 mr-2 text-gray-500" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <span><strong>Size:</strong>
+                                                        {{ number_format($video->file_size / 1024 / 1024, 2) }}
+                                                        MB</span>
+                                                </li>
+                                                <li class="flex items-center">
+                                                    <svg class="w-5 h-5 mr-2 text-gray-500" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                    </svg>
+                                                    <span><strong>Uploaded:</strong>
+                                                        {{ $video->created_at->diffForHumans() }}</span>
+                                                </li>
+                                                <li class="flex items-center">
+                                                    <svg class="w-5 h-5 mr-2 text-gray-500" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                    </svg>
+                                                    <span><strong>Privacy:</strong>
+                                                        {{ ucfirst($video->privacy) }}</span>
+                                                </li>
+                                            </ul>
                                         </div>
 
                                         <!-- Video Controls -->

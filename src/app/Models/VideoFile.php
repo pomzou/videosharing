@@ -51,4 +51,39 @@ class VideoFile extends Model
     {
         return $this->user_id === ($userId ?? Auth::id());
     }
+
+    public function getFileType()
+    {
+        $mimeType = strtolower($this->mime_type);
+
+        if (strpos($mimeType, 'video/') === 0) {
+            return 'video';
+        } elseif (strpos($mimeType, 'image/') === 0) {
+            return 'image';
+        } elseif (strpos($mimeType, 'audio/') === 0) {
+            return 'audio';
+        } elseif (strpos($mimeType, 'text/') === 0) {
+            return 'text';
+        } elseif (strpos($mimeType, 'application/pdf') === 0) {
+            return 'pdf';
+        } elseif (
+            strpos($mimeType, 'application/msword') === 0 ||
+            strpos($mimeType, 'application/vnd.openxmlformats-officedocument.wordprocessingml') === 0
+        ) {
+            return 'document';
+        } elseif (
+            strpos($mimeType, 'application/vnd.ms-excel') === 0 ||
+            strpos($mimeType, 'application/vnd.openxmlformats-officedocument.spreadsheetml') === 0
+        ) {
+            return 'spreadsheet';
+        } elseif (
+            strpos($mimeType, 'application/zip') === 0 ||
+            strpos($mimeType, 'application/x-rar') === 0 ||
+            strpos($mimeType, 'application/x-7z-compressed') === 0
+        ) {
+            return 'archive';
+        }
+
+        return 'other';
+    }
 }

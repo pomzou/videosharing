@@ -210,7 +210,7 @@ class VideoFileController extends Controller
                     ]);
 
                     // 所有者は常にプレビュー可能
-                    if ($video->isOwner()) {
+                    if ($video->isOwner() && in_array($video->getFileType(), ['video', 'image', 'audio', 'pdf', 'text'])) {
                         $video->preview_url = (string) $s3Client->createPresignedRequest($cmd, '+1 hour')->getUri();
                     }
 
