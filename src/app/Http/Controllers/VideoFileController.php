@@ -301,4 +301,32 @@ class VideoFileController extends Controller
             return response()->json(['error' => 'Failed to delete video'], 500);
         }
     }
+
+    public function revokeUrl(VideoFile $videoFile)
+    {
+        try {
+            if ($videoFile->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $videoFile->update([
+                'url_expires_at' => null,
+                'current_signed_url' => null
+            ]);
+
+            Log::info('URL access revoked', [
+                'video_id' => $videoFile->id
+            ]);
+
+            return response()->json([
+                'message' => 'Access revoked successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to revoke URL access', [
+                'video_id' => $videoFile->id,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['error' => 'Failed to revoke access'], 500);
+        }
+    }
 }

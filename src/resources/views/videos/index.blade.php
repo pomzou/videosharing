@@ -299,8 +299,18 @@
                                             <!-- Timer & URL Display (期限内の場合) -->
                                             @if ($video->url_expires_at && $video->url_expires_at->isFuture())
                                                 <div id="timer-{{ $video->id }}" class="text-sm text-gray-600">
-                                                    <p>Time remaining: <span
-                                                            class="text-indigo-600 font-medium"></span></p>
+                                                    <div class="flex justify-between items-center">
+                                                        <p>Time remaining: <span
+                                                                class="text-indigo-600 font-medium"></span></p>
+                                                        <button onclick="revokeAccess({{ $video->id }})"
+                                                            class="px-2 py-1 text-sm font-medium text-red-600 hover:text-red-800 focus:outline-none">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 <div id="url-{{ $video->id }}" class="space-y-2">
                                                     <div class="flex items-center gap-2">
@@ -829,6 +839,43 @@
             if (hasExpired) {
                 videoElement.pause();
                 showNotification('This video link has expired. Please generate a new download link.', 'error');
+            }
+        }
+
+        async function revokeAccess(videoId) {
+            if (!confirm('Are you sure you want to revoke access to this URL?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/videos/${videoId}/revoke`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to revoke access');
+                }
+
+                // URL関連の要素を非表示
+                const urlDiv = document.getElementById(`url-${videoId}`);
+                const timerDiv = document.getElementById(`timer-${videoId}`);
+                const generateBtn = document.getElementById(`generate-btn-${videoId}`);
+
+                if (urlDiv) urlDiv.classList.add('hidden');
+                if (timerDiv) timerDiv.classList.add('hidden');
+                if (generateBtn) {
+                    generateBtn.classList.remove('hidden');
+                    generateBtn.textContent = 'Generate Download Link';
+                }
+
+                showNotification('Access revoked successfully', 'success');
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification(error.message, 'error');
             }
         }
     </script>
