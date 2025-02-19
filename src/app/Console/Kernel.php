@@ -18,6 +18,13 @@ class Kernel extends ConsoleKernel
             ->dailyAt('01:00')
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/cleanup.log'));
+
+        // 毎週日曜日の深夜2時にストレージのクリーンアップを実行
+        // --dry-run オプションを付けて、削除前に確認用のログを生成
+        $schedule->command('storage:cleanup --dry-run')
+            ->weeklyOn(0, '02:00')
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/storage_cleanup.log'));
     }
 
     /**
