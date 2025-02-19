@@ -15,6 +15,7 @@ services:
       - "8080:80"
     depends_on:
       - db
+      - mailhog
     networks:
       - app-network
 
@@ -41,6 +42,14 @@ services:
       PMA_HOST: db
     depends_on:
       - db
+    networks:
+      - app-network
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI port
     networks:
       - app-network
 

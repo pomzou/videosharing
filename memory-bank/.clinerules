@@ -1,0 +1,220 @@
+# Project Rules and Patterns
+
+## Code Organization
+
+### Directory Structure
+- Controllers in app/Http/Controllers
+- Models in app/Models
+- Views in resources/views
+- Migrations in database/migrations
+- Email templates in resources/views/emails
+
+### Naming Conventions
+- Controllers: PascalCase, suffixed with 'Controller'
+- Models: PascalCase, singular form
+- Views: snake_case
+- Migrations: timestamp_description format
+- Components: kebab-case for Blade components
+
+## Implementation Patterns
+
+### Video Management
+1. Storage
+   - AWS S3 for video files
+   - Signed URLs for access
+   - Pre-generated URLs stored in database
+   - Efficient cleanup processes
+
+2. Privacy
+   - Default to private
+   - Explicit sharing required
+   - Access logging mandatory
+   - Granular permission control
+
+### Access Control
+1. Sharing
+   - Token-based access
+   - Time-limited URLs
+   - Email notifications
+   - Access tracking
+   - Bulk operations support
+
+2. URL Generation
+   - Pre-generate signed URLs with caching
+   - Store in current_signed_url field
+   - Implement expiration monitoring
+   - Batch update mechanism
+   - Cache invalidation strategy
+
+## Development Workflow
+
+### Feature Implementation
+1. Database Changes
+   - Create migration
+   - Update model
+   - Add relationships
+   - Optimize indexes
+
+2. Business Logic
+   - Controller methods
+   - Service classes
+   - Event handling
+   - Performance monitoring
+
+3. User Interface
+   - Blade views
+   - Component creation
+   - Layout integration
+   - Mobile responsiveness
+
+### Testing Requirements
+1. Unit Tests
+   - Model methods
+   - Service logic
+   - Helper functions
+   - Performance benchmarks
+
+2. Feature Tests
+   - Controller actions
+   - User workflows
+   - Access control
+   - Load testing
+
+## UI Components
+
+### Alert System
+- Use components/alerts
+- Success and error variants
+- Consistent styling
+- Flash message integration
+- Mobile-friendly display
+
+### Form Elements
+- Use Blade components
+- Consistent validation
+- Error handling
+- CSRF protection
+- Responsive design
+
+## Security Practices
+
+### File Access
+- Always use signed URLs
+- Implement expiration
+- Track access attempts
+- Log unauthorized access
+- Monitor access patterns
+
+### User Data
+- Validate all input
+- Sanitize output
+- Protect sensitive info
+- Audit access logs
+- Rate limiting
+
+## Performance Guidelines
+
+### Database
+- Optimize queries
+- Use eager loading
+- Index key columns
+- Monitor query logs
+- Query caching strategy
+- Batch operations
+- Connection pooling
+
+### Storage
+- Clean up expired files
+- Monitor usage
+- Optimize file sizes
+- Cache when possible
+- Implement cleanup jobs
+- Storage cost optimization
+- Compression strategies
+
+### Caching
+- URL caching system
+- Query result caching
+- Cache invalidation rules
+- Cache warming strategy
+- Distributed caching setup
+
+## Error Handling
+
+### User Errors
+- Clear messages
+- Proper HTTP codes
+- Redirect with feedback
+- Log important failures
+- Mobile-friendly errors
+- Retry mechanisms
+
+### System Errors
+- Detailed logging
+- Alert on critical issues
+- Graceful degradation
+- Maintain audit trail
+- Error rate monitoring
+- Performance impact tracking
+- Recovery procedures
+
+## Monitoring
+
+### Performance Metrics
+- Query execution time
+- Cache hit rates
+- Storage operations
+- URL generation time
+- Access log efficiency
+
+### System Health
+- Error rates
+- Storage usage
+- Database performance
+- Cache effectiveness
+- API response times
+
+## Language Support
+- Think in English
+- Answer in Japanese 
+
+## Git Commit Guidelines
+1. Commit Message Format
+   - Prefix with type: fix:, feat:, docs:, etc.
+   - Clear description in Japanese
+   - Bullet points for detailed changes
+   - Example format:
+     ```
+     git add [files] && git commit -m "fix: 署名付きURL生成の日付処理を修正
+
+     - 具体的な変更点を箇条書きで記載
+     - 技術的な詳細を含める
+     - UI/UX変更がある場合はその内容も記載"
+     ```
+
+2. Commit Process
+   - Stage relevant files
+   - Use descriptive commit messages
+   - Include implementation details
+   - Note any UI/UX changes
+
+## Tool Usage Guidelines
+
+### write_to_file Operations
+1. File Content Preservation
+   - Always read existing file content before modifications
+   - Include complete file content in write operations
+   - Never truncate or omit existing sections
+   - Maintain file structure and formatting
+
+2. Content Updates
+   - Make targeted changes while preserving context
+   - Keep existing sections intact
+   - Maintain consistent formatting
+   - Include all necessary imports and dependencies
+
+3. Implementation Process
+   - Read current file content
+   - Make necessary modifications
+   - Verify all content is preserved
+   - Include complete file in write operation

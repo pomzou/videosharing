@@ -20,17 +20,32 @@ class ShareVideoRequest extends FormRequest
                 'required',
                 'email:rfc,dns',
                 'max:255',
+                // メールアドレスの形式チェック
+                'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+
                 // 禁止ドメインのチェック
                 function ($attribute, $value, $fail) {
                     $blockedDomains = [
                         'example.com',
                         'tempmail.com',
-                        'disposable.com'
+                        'disposable.com',
+                        'temp-mail.org',
+                        'throwawaymail.com',
+                        'mailinator.com',
+                        'guerrillamail.com',
+                        'yopmail.com',
+                        'sharklasers.com',
+                        '10minutemail.com'
                     ];
 
                     $domain = substr(strrchr($value, "@"), 1);
-                    if (in_array($domain, $blockedDomains)) {
-                        $fail('This email domain is not allowed.');
+                    if (in_array(strtolower($domain), $blockedDomains)) {
+                        $fail('This email domain is not allowed. Please use a valid business or personal email address.');
+                    }
+
+                    // 一般的な無効なドメインパターンをチェック
+                    if (preg_match('/\.(test|invalid|localhost)$/', strtolower($domain))) {
+                        $fail('Invalid email domain. Please use a valid email address.');
                     }
                 },
                 // 既存の有効な共有設定がないかチェック
@@ -47,18 +62,10 @@ class ShareVideoRequest extends FormRequest
                 'before:' . now()->addDays(30)->toDateTimeString(), // 最大30日
             ],
             'confirmation_token' => [
-                'required_without:confirmed',
-                'string',
-                function ($attribute, $value, $fail) {
-                    if (!$this->boolean('confirmed')) {
-                        $expectedToken = hash('sha256', $this->input('email') . $this->route('videoFile')->id);
-                        if ($value !== $expectedToken) {
-                            $fail('Invalid confirmation token.');
-                        }
-                    }
-                }
+                'sometimes',
+                'string'
             ],
-            'confirmed' => 'boolean'
+            'confirmed' => 'sometimes|boolean'
         ];
     }
 

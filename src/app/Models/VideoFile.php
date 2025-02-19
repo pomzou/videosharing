@@ -5,11 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-
+use Aws\S3\S3Client;
 
 class VideoFile extends Model
 {
-
     protected $fillable = [
         'user_id',
         'title',
@@ -50,6 +49,26 @@ class VideoFile extends Model
     public function isOwner($userId = null)
     {
         return $this->user_id === ($userId ?? Auth::id());
+    }
+
+    public function generateSignedUrl($expiresAt)
+    {
+        $s3Client = new S3Client([
+            'version' => 'latest',
+            'region'  => config('filesystems.disks.s3.region'),
+            'credentials' => [
+                'key'    => config('filesystems.disks.s3.key'),
+                'secret' => config('filesystems.disks.s3.secret'),
+            ],
+        ]);
+
+        $cmd = $s3Client->getCommand('GetObject', [
+            'Bucket' => config('filesystems.disks.s3.bucket'),
+            'Key'    => $this->s3_path
+        ]);
+
+        $request = $s3Client->createPresignedRequest($cmd, $expiresAt);
+        return (string) $request->getUri();
     }
 
     public function getFileType()

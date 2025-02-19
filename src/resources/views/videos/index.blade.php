@@ -840,7 +840,7 @@
                 // 確認画面に情報を表示
                 document.getElementById(`confirm-email-${videoId}`).textContent = email;
                 document.getElementById(`confirm-expires-${videoId}`).textContent = new Date(expiresAt)
-            .toLocaleString();
+                    .toLocaleString();
 
                 // フォームを隠して確認画面を表示
                 document.getElementById(`share-form-${videoId}`).classList.add('hidden');
@@ -907,14 +907,81 @@
                     }
                 });
 
-                if (response.ok) {
-                    showNotification('Access revoked successfully', 'success');
-                    // ページをリロードするか、DOMを更新
-                    window.location.reload();
-                } else {
-                    throw new Error('Failed to revoke access');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to revoke access');
                 }
+
+                showNotification('Access revoked successfully', 'success');
+                window.location.reload();
             } catch (error) {
+                console.error('Revoke error:', error);
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function confirmShare(event, videoId) {
+            event.preventDefault();
+
+            const email = document.getElementById(`email-${videoId}`).value;
+            const expiresAt = document.getElementById(`expires-${videoId}`).value;
+
+            // 有効期限のチェック
+            const expiryDate = new Date(expiresAt);
+            const now = new Date();
+            const hoursDiff = (expiryDate - now) / (1000 * 60 * 60);
+
+            if (hoursDiff > 168) {
+                showNotification('The expiration time cannot exceed 7 days', 'error');
+                return;
+            }
+
+            try {
+                // 確認画面に情報を表示
+                document.getElementById(`confirm-email-${videoId}`).textContent = email;
+                document.getElementById(`confirm-expires-${videoId}`).textContent = new Date(expiresAt)
+                    .toLocaleString();
+
+                // フォームを隠して確認画面を表示
+                document.getElementById(`share-form-${videoId}`).classList.add('hidden');
+                document.getElementById(`share-confirm-${videoId}`).classList.remove('hidden');
+            } catch (error) {
+                console.error('Confirmation error:', error);
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function executeShare(videoId) {
+            const email = document.getElementById(`email-${videoId}`).value;
+            const expiresAt = document.getElementById(`expires-${videoId}`).value;
+
+            try {
+                const response = await fetch(`/videos/${videoId}/share`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email,
+                        expires_at: expiresAt,
+                        confirmed: true
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || data.message || 'Failed to share video');
+                }
+
+                showNotification('Video shared successfully. An email has been sent to ' + email, 'success');
+                closeShareModal(videoId);
+                window.location.reload();
+            } catch (error) {
+                console.error('Share error:', error);
                 showNotification(error.message, 'error');
             }
         }

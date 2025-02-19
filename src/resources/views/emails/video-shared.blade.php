@@ -70,7 +70,7 @@
 
     <div class="content">
         <p>Hello,</p>
-        <p>{{ $share->videoFile->user->name }} has shared a file with you.</p>
+        <p>{{ $share->videoFile->user->name ?? 'Someone' }} has shared a file with you.</p>
 
         <div class="info-box">
             <h3>File Details:</h3>

@@ -48,6 +48,19 @@ class VideoShareController extends Controller
         try {
             DB::beginTransaction();
 
+            // 有効期限をパース
+            $expiresAt = new \DateTime($request->expires_at);
+            $now = new \DateTime();
+            $hoursDiff = ($expiresAt->getTimestamp() - $now->getTimestamp()) / 3600;
+
+            // 有効期限のチェック（最大7日間）
+            if ($hoursDiff > 168) {
+                throw new \Exception('The expiration time cannot exceed 7 days');
+            }
+
+            // ユーザー情報をロード
+            $videoFile->load('user');
+
             // 署名付きURLを生成
             $signedUrl = $videoFile->generateSignedUrl($request->expires_at);
 
@@ -56,7 +69,22 @@ class VideoShareController extends Controller
                 'email' => $request->email,
                 'access_token' => Str::random(32),
                 'expires_at' => $request->expires_at,
-                'is_active' => true
+                'is_active' => true,
+                'share_type' => 'email'  // メール共有として作成
+            ]);
+
+            // リレーションをロード
+            $share->load(['videoFile.user']);
+
+            // デバッグログ
+            Log::info('Share created with relations', [
+                'share_id' => $share->id,
+                'video_file_id' => $videoFile->id,
+                'user_name' => $videoFile->user->name ?? 'Not loaded',
+                'relations' => [
+                    'has_video_file' => $share->videoFile !== null,
+                    'has_user' => $share->videoFile?->user !== null
+                ]
             ]);
 
             // URLを保存
@@ -64,9 +92,6 @@ class VideoShareController extends Controller
                 'current_signed_url' => $signedUrl,
                 'url_expires_at' => $request->expires_at
             ]);
-
-            // メール送信
-            Mail::to($request->email)->send(new VideoShared($share, $signedUrl));
 
             // アクセスログに記録
             $share->accessLogs()->create([
@@ -78,6 +103,22 @@ class VideoShareController extends Controller
             ]);
 
             DB::commit();
+
+            // トランザクション外でメール送信を試行
+            try {
+                Mail::to($request->email)->send(new VideoShared($share, $signedUrl));
+            } catch (\Exception $e) {
+                Log::error('Failed to send email', [
+                    'share_id' => $share->id,
+                    'error' => $e->getMessage()
+                ]);
+                // メール送信失敗でも共有自体は成功とする
+                return response()->json([
+                    'message' => 'Video shared successfully but email notification failed',
+                    'share' => $share,
+                    'warning' => 'Email notification could not be sent'
+                ]);
+            }
 
             Log::info('Video shared successfully', [
                 'video_id' => $videoFile->id,
@@ -106,24 +147,68 @@ class VideoShareController extends Controller
 
     public function revokeAccess(VideoShare $share)
     {
-        // 所有者チェック
-        if ($share->videoFile->user_id !== Auth::id()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        try {
+            // 所有者チェック
+            if ($share->videoFile->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            DB::beginTransaction();
+
+            // 共有設定を無効化
+            $share->update(['is_active' => false]);
+
+            // アクセスログに記録
+            $share->accessLogs()->create([
+                'video_file_id' => $share->video_file_id,
+                'access_email' => $share->email,
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+                'action' => 'access_revoked'
+            ]);
+
+            DB::commit();
+
+            Log::info('Access revoked successfully', [
+                'share_id' => $share->id,
+                'video_id' => $share->video_file_id,
+                'email' => $share->email
+            ]);
+
+            return response()->json([
+                'message' => 'Access revoked successfully'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to revoke access', [
+                'share_id' => $share->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to revoke access',
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        $share->update(['is_active' => false]);
-
-        return response()->json([
-            'message' => 'Access revoked successfully'
-        ]);
     }
 
     public function accessVideo(string $token)
     {
-        $share = VideoShare::where('access_token', $token)
-            ->where('is_active', true)
-            ->where('expires_at', '>', now())
-            ->firstOrFail();
+        $share = VideoShare::where('access_token', $token)->firstOrFail();
+
+        // メール共有の場合、期限切れは期限切れページを表示
+        if ($share->isEmailShare() && $share->isExpired()) {
+            return view('videos.expired', [
+                'video' => $share->videoFile,
+                'share' => $share
+            ]);
+        }
+
+        // アクティブでない、または期限切れの場合は403
+        if (!$share->is_active || $share->isExpired()) {
+            abort(403, 'This share link is no longer active');
+        }
 
         // アクセスログを記録
         AccessLog::create([
