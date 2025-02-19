@@ -48,6 +48,9 @@ class VideoShareController extends Controller
         try {
             DB::beginTransaction();
 
+            // 署名付きURLを生成
+            $signedUrl = $videoFile->generateSignedUrl($request->expires_at);
+
             // 新しい共有設定を作成
             $share = $videoFile->shares()->create([
                 'email' => $request->email,
@@ -56,8 +59,14 @@ class VideoShareController extends Controller
                 'is_active' => true
             ]);
 
+            // URLを保存
+            $videoFile->update([
+                'current_signed_url' => $signedUrl,
+                'url_expires_at' => $request->expires_at
+            ]);
+
             // メール送信
-            Mail::to($request->email)->send(new VideoShared($share));
+            Mail::to($request->email)->send(new VideoShared($share, $signedUrl));
 
             // アクセスログに記録
             $share->accessLogs()->create([
