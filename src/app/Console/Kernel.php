@@ -25,6 +25,13 @@ class Kernel extends ConsoleKernel
             ->weeklyOn(0, '02:00')
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/storage_cleanup.log'));
+
+        // 30分ごとにURL有効期限を監視
+        // 期限切れURLの無効化と通知を実行
+        $schedule->command('urls:monitor')
+            ->everyThirtyMinutes()
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/url_monitor.log'));
     }
 
     /**
