@@ -293,8 +293,8 @@
                                             <div id="shares-list-{{ $video->id }}" class="mt-2 space-y-2 hidden">
                                                 @foreach ($video->shares->sortByDesc('created_at') as $share)
                                                     @if ($share->isEmailShare())
-                                                        <div
-                                                            class="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                                                        <div class="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                                                            data-share-id="{{ $share->id }}">
                                                             <div>
                                                                 <span
                                                                     class="text-sm text-gray-600">{{ $share->email }}</span>
@@ -910,14 +910,21 @@
                     }
                 });
 
-                const data = await response.json();
-
                 if (!response.ok) {
+                    const data = await response.json();
                     throw new Error(data.error || 'Failed to revoke access');
                 }
 
+                // 成功したら即座にUIを更新
+                const shareElement = document.querySelector(`[data-share-id="${shareId}"]`);
+                if (shareElement) {
+                    const actionDiv = shareElement.querySelector('.flex.items-center');
+                    if (actionDiv) {
+                        actionDiv.innerHTML = '<span class="text-xs text-red-500">Expired</span>';
+                    }
+                }
+
                 showNotification('Access revoked successfully', 'success');
-                window.location.reload();
             } catch (error) {
                 console.error('Revoke error:', error);
                 showNotification(error.message, 'error');
