@@ -292,27 +292,30 @@
                                             </button>
                                             <div id="shares-list-{{ $video->id }}" class="mt-2 space-y-2 hidden">
                                                 @foreach ($video->shares->sortByDesc('created_at') as $share)
-                                                    <div
-                                                        class="flex items-center justify-between p-2 bg-gray-50 rounded-md">
-                                                        <div>
-                                                            <span
-                                                                class="text-sm text-gray-600">{{ $share->email }}</span>
-                                                            <span class="text-xs text-gray-500 ml-2">
-                                                                Expires: {{ $share->expires_at->format('Y-m-d H:i') }}
-                                                            </span>
+                                                    @if ($share->isEmailShare())
+                                                        <div
+                                                            class="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                                                            <div>
+                                                                <span
+                                                                    class="text-sm text-gray-600">{{ $share->email }}</span>
+                                                                <span class="text-xs text-gray-500 ml-2">
+                                                                    Expires:
+                                                                    {{ $share->expires_at->format('Y-m-d H:i') }}
+                                                                </span>
+                                                            </div>
+                                                            <div class="flex items-center">
+                                                                @if (!$share->is_active || $share->isExpired())
+                                                                    <span class="text-xs text-red-500">Expired</span>
+                                                                @else
+                                                                    <button
+                                                                        onclick="revokeAccess({{ $share->id }})"
+                                                                        class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                        Revoke Access
+                                                                    </button>
+                                                                @endif
+                                                            </div>
                                                         </div>
-                                                        <div class="flex items-center">
-                                                            @if ($share->is_active)
-                                                                <button onclick="revokeAccess({{ $share->id }})"
-                                                                    class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                    Revoke Access
-                                                                </button>
-                                                            @else
-                                                                <span class="text-xs text-gray-500">Access
-                                                                    Revoked</span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
+                                                    @endif
                                                 @endforeach
                                             </div>
                                         </div>
