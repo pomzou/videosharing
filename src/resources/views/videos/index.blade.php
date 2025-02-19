@@ -841,7 +841,7 @@
         async function revokeAccess(videoId) {
             if (!confirm(
                     'Are you sure you want to revoke access to this URL? This will invalidate the current download link.'
-                    )) {
+                )) {
                 return;
             }
 

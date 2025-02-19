@@ -89,7 +89,11 @@ class VideoFileController extends Controller
 
             // S3にアップロード
             $s3Path = 'files/' . $fileName;  // 'videos' から 'files' に変更して汎用的に
-            Storage::disk('s3')->put($s3Path, file_get_contents($file));
+            Storage::disk('s3')->putFileAs(
+                dirname($s3Path),
+                $file,
+                basename($s3Path)
+            );
 
             // データベースに保存
             $videoFile = VideoFile::create([
@@ -132,7 +136,8 @@ class VideoFileController extends Controller
                 ]
             ]);
 
-            $expiresAt = new \DateTime($request->expires_at);
+            // 日本時間で期限を設定
+            $expiresAt = new \DateTime($request->expires_at, new \DateTimeZone('Asia/Tokyo'));
             $hours = now()->diffInHours($expiresAt);
 
             $credentials = [
