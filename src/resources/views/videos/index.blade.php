@@ -185,34 +185,95 @@
                                                 <div class="mt-3">
                                                     <h3 class="text-lg font-medium text-gray-900">Share Video</h3>
                                                     <div class="mt-2">
-                                                        <form onsubmit="shareVideo(event, {{ $video->id }})">
+                                                        <div id="share-form-{{ $video->id }}">
+                                                            <form onsubmit="confirmShare(event, {{ $video->id }})">
+                                                                <div class="mt-4">
+                                                                    <label for="email-{{ $video->id }}"
+                                                                        class="block text-sm font-medium text-gray-700">Email</label>
+                                                                    <input type="email"
+                                                                        id="email-{{ $video->id }}" required
+                                                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                                </div>
+                                                                <div class="mt-4">
+                                                                    <label for="expires-{{ $video->id }}"
+                                                                        class="block text-sm font-medium text-gray-700">Expires
+                                                                        At</label>
+                                                                    <input type="datetime-local"
+                                                                        id="expires-{{ $video->id }}" required
+                                                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                                </div>
+                                                                <div class="mt-4 flex justify-end space-x-3">
+                                                                    <button type="button"
+                                                                        onclick="closeShareModal({{ $video->id }})"
+                                                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                                        Cancel
+                                                                    </button>
+                                                                    <button type="submit"
+                                                                        class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                                        Next
+                                                                    </button>
+                                                                </div>
+                                                            </form>
+                                                        </div>
+
+                                                        <div id="share-confirm-{{ $video->id }}" class="hidden">
                                                             <div class="mt-4">
-                                                                <label for="email-{{ $video->id }}"
-                                                                    class="block text-sm font-medium text-gray-700">Email</label>
-                                                                <input type="email" id="email-{{ $video->id }}"
-                                                                    required
-                                                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                                <h4 class="text-lg font-medium text-gray-900 mb-4">
+                                                                    Confirm Share Details</h4>
+
+                                                                <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                                                                    <div class="mb-2">
+                                                                        <span
+                                                                            class="text-sm font-medium text-gray-500">Recipient
+                                                                            Email:</span>
+                                                                        <span id="confirm-email-{{ $video->id }}"
+                                                                            class="ml-2 text-gray-900"></span>
+                                                                    </div>
+                                                                    <div class="mb-2">
+                                                                        <span
+                                                                            class="text-sm font-medium text-gray-500">Access
+                                                                            Expires:</span>
+                                                                        <span id="confirm-expires-{{ $video->id }}"
+                                                                            class="ml-2 text-gray-900"></span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div
+                                                                    class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                                                                    <div class="flex">
+                                                                        <div class="flex-shrink-0">
+                                                                            <svg class="h-5 w-5 text-yellow-400"
+                                                                                viewBox="0 0 20 20"
+                                                                                fill="currentColor">
+                                                                                <path fill-rule="evenodd"
+                                                                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                                                                    clip-rule="evenodd" />
+                                                                            </svg>
+                                                                        </div>
+                                                                        <div class="ml-3">
+                                                                            <p class="text-sm text-yellow-700">
+                                                                                Please verify the email address
+                                                                                carefully. The file will be accessible
+                                                                                only to this email address.
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="flex justify-end space-x-3">
+                                                                    <button type="button"
+                                                                        onclick="backToShareForm({{ $video->id }})"
+                                                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                                        Back
+                                                                    </button>
+                                                                    <button type="button"
+                                                                        onclick="executeShare({{ $video->id }})"
+                                                                        class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                                        Confirm & Share
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                            <div class="mt-4">
-                                                                <label for="expires-{{ $video->id }}"
-                                                                    class="block text-sm font-medium text-gray-700">Expires
-                                                                    At</label>
-                                                                <input type="datetime-local"
-                                                                    id="expires-{{ $video->id }}" required
-                                                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                                            </div>
-                                                            <div class="mt-4 flex justify-end space-x-3">
-                                                                <button type="button"
-                                                                    onclick="closeShareModal({{ $video->id }})"
-                                                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                                    Cancel
-                                                                </button>
-                                                                <button type="submit"
-                                                                    class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                                                    Share
-                                                                </button>
-                                                            </div>
-                                                        </form>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -750,14 +811,14 @@
             document.getElementById(`share-modal-${videoId}`).classList.add('hidden');
         }
 
-        async function shareVideo(event, videoId) {
+        async function confirmShare(event, videoId) {
             event.preventDefault();
 
             const email = document.getElementById(`email-${videoId}`).value;
             const expiresAt = document.getElementById(`expires-${videoId}`).value;
 
             try {
-                const response = await fetch(`/videos/${videoId}/share`, {
+                const response = await fetch(`/videos/${videoId}/share/confirm`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -773,6 +834,51 @@
                 const data = await response.json();
 
                 if (!response.ok) {
+                    throw new Error(data.error || data.message || 'Failed to validate share details');
+                }
+
+                // 確認画面に情報を表示
+                document.getElementById(`confirm-email-${videoId}`).textContent = email;
+                document.getElementById(`confirm-expires-${videoId}`).textContent = new Date(expiresAt)
+            .toLocaleString();
+
+                // フォームを隠して確認画面を表示
+                document.getElementById(`share-form-${videoId}`).classList.add('hidden');
+                document.getElementById(`share-confirm-${videoId}`).classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Confirmation error:', error);
+                showNotification(error.message, 'error');
+            }
+        }
+
+        function backToShareForm(videoId) {
+            document.getElementById(`share-form-${videoId}`).classList.remove('hidden');
+            document.getElementById(`share-confirm-${videoId}`).classList.add('hidden');
+        }
+
+        async function executeShare(videoId) {
+            const email = document.getElementById(`email-${videoId}`).value;
+            const expiresAt = document.getElementById(`expires-${videoId}`).value;
+
+            try {
+                const response = await fetch(`/videos/${videoId}/share`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email,
+                        expires_at: expiresAt,
+                        confirmed: true
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
                     throw new Error(data.error || data.message || 'Failed to share video');
                 }
 
@@ -781,8 +887,6 @@
 
                 // 共有リストを更新
                 window.location.reload();
-
-                console.log('Share successful:', data);
             } catch (error) {
                 console.error('Share error:', error);
                 showNotification(error.message, 'error');

@@ -6,7 +6,7 @@ use App\Models\VideoFile;
 use App\Models\VideoShare;
 use App\Models\AccessLog;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
+use App\Http\Requests\ShareVideoRequest;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\VideoShared;
@@ -15,65 +15,73 @@ use Illuminate\Support\Facades\DB;
 
 class VideoShareController extends Controller
 {
-    public function share(Request $request, VideoFile $videoFile)
+    public function confirmShare(ShareVideoRequest $request, VideoFile $videoFile)
     {
+        // 所有者チェック
+        if ($videoFile->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // 確認トークンを生成
+        $confirmationToken = $request->generateConfirmationToken();
+
+        return response()->json([
+            'message' => 'Please confirm the email address',
+            'confirmation_token' => $confirmationToken,
+            'email' => $request->email,
+            'expires_at' => $request->expires_at,
+            'video' => [
+                'title' => $videoFile->title,
+                'file_name' => $videoFile->original_name,
+                'file_size' => $videoFile->file_size
+            ]
+        ]);
+    }
+
+    public function share(ShareVideoRequest $request, VideoFile $videoFile)
+    {
+        // 所有者チェック
+        if ($videoFile->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
         try {
-            // 所有者チェック
-            if ($videoFile->user_id !== Auth::id()) {
-                return response()->json(['error' => 'Unauthorized'], 403);
-            }
-
-            $request->validate([
-                'email' => 'required|email',
-                'expires_at' => 'required|date|after:now'
-            ]);
-
-            // トランザクション開始
             DB::beginTransaction();
 
-            try {
-                // 既存の共有設定を確認
-                $existingShare = $videoFile->shares()
-                    ->where('email', $request->email)
-                    ->where('is_active', true)
-                    ->first();
+            // 新しい共有設定を作成
+            $share = $videoFile->shares()->create([
+                'email' => $request->email,
+                'access_token' => Str::random(32),
+                'expires_at' => $request->expires_at,
+                'is_active' => true
+            ]);
 
-                if ($existingShare) {
-                    DB::rollBack();
-                    return response()->json([
-                        'message' => 'Already shared with this email',
-                        'share' => $existingShare
-                    ]);
-                }
+            // メール送信
+            Mail::to($request->email)->send(new VideoShared($share));
 
-                // 新しい共有設定を作成
-                $share = $videoFile->shares()->create([
-                    'email' => $request->email,
-                    'access_token' => Str::random(32),
-                    'expires_at' => $request->expires_at,
-                    'is_active' => true
-                ]);
+            // アクセスログに記録
+            $share->accessLogs()->create([
+                'video_file_id' => $videoFile->id,
+                'access_email' => $request->email,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'action' => 'share_created'
+            ]);
 
-                // メール送信は別のジョブで処理することを推奨
-                // Mail::to($request->email)->send(new VideoShared($share));
+            DB::commit();
 
-                DB::commit();
+            Log::info('Video shared successfully', [
+                'video_id' => $videoFile->id,
+                'share_id' => $share->id,
+                'email' => $request->email
+            ]);
 
-                Log::info('Video shared successfully', [
-                    'video_id' => $videoFile->id,
-                    'share_id' => $share->id,
-                    'email' => $request->email
-                ]);
-
-                return response()->json([
-                    'message' => 'Video shared successfully',
-                    'share' => $share
-                ]);
-            } catch (\Exception $e) {
-                DB::rollBack();
-                throw $e;
-            }
+            return response()->json([
+                'message' => 'Video shared successfully',
+                'share' => $share
+            ]);
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Failed to share video', [
                 'video_id' => $videoFile->id,
                 'error' => $e->getMessage(),

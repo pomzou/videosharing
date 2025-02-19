@@ -35,6 +35,8 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/videos/{videoFile}', [VideoFileController::class, 'destroy'])->name('videos.destroy');
 
+    // 共有関連のルート
+    Route::post('/videos/{videoFile}/share/confirm', [VideoShareController::class, 'confirmShare'])->name('videos.share.confirm');
     Route::post('/videos/{videoFile}/share', [VideoShareController::class, 'share'])->name('videos.share');
     Route::delete('/shares/{share}', [VideoShareController::class, 'revokeAccess'])->name('shares.revoke');
     Route::get('/shares/{videoFile}', [VideoShareController::class, 'listShares'])->name('shares.list');
