@@ -197,14 +197,6 @@ class VideoShareController extends Controller
     {
         $share = VideoShare::where('access_token', $token)->firstOrFail();
 
-        // メール共有の場合、期限切れは期限切れページを表示
-        if ($share->isEmailShare() && $share->isExpired()) {
-            return view('videos.expired', [
-                'video' => $share->videoFile,
-                'share' => $share
-            ]);
-        }
-
         // アクティブでない、または期限切れの場合は403
         if (!$share->is_active || $share->isExpired()) {
             abort(403, 'This share link is no longer active');
@@ -235,7 +227,13 @@ class VideoShareController extends Controller
         $shares = $videoFile->shares()
             ->with('accessLogs')
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($share) {
+                $share->status = $share->isEmailShare()
+                    ? (!$share->is_active || $share->isExpired() ? 'Expired' : 'Active')
+                    : null;
+                return $share;
+            });
 
         return response()->json(['shares' => $shares]);
     }
