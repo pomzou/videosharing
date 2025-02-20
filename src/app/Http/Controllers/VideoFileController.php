@@ -176,9 +176,21 @@ class VideoFileController extends Controller
                 'expires_in_hours' => $hours
             ]);
 
+            // S3から取得したexpires_atを日本時間に変換する
+            $expiresAtUtc = $expiresAt->setTimezone(new \DateTimeZone('UTC'));
+
+            // 日本時間に変換
+            $expiresAtTokyo = $expiresAtUtc->setTimezone(new \DateTimeZone('Asia/Tokyo'));
+
+            // DBに保存する際も日本時間で保存したい場合
+            $videoFile->update([
+                'url_expires_at' => $expiresAtTokyo,
+                'current_signed_url' => $signedUrl
+            ]);
+
             return response()->json([
                 'url' => $signedUrl,
-                'expires_at' => $expiresAt->format('c')
+                'expires_at' => $expiresAtTokyo->format('c') // 日本時間で表示
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to generate signed URL', [

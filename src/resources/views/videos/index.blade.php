@@ -405,26 +405,23 @@
                                                     <div class="mt-4 space-y-3">
                                                         <!-- Preset buttons -->
                                                         <div class="grid grid-cols-2 gap-2">
-                                                            <button
-                                                                onclick="generateWithPreset({{ $video->id }}, 3)"
-                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                3 Hours
-                                                            </button>
-                                                            <button
-                                                                onclick="generateWithPreset({{ $video->id }}, 12)"
-                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                12 Hours
-                                                            </button>
-                                                            <button
-                                                                onclick="generateWithPreset({{ $video->id }}, 24)"
-                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                1 Day
-                                                            </button>
-                                                            <button
-                                                                onclick="generateWithPreset({{ $video->id }}, 168)"
-                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                7 Days
-                                                            </button>
+                                                            @php
+                                                                $presets = [
+                                                                    3 => '3 Hours',
+                                                                    12 => '12 Hours',
+                                                                    24 => '1 Day',
+                                                                    168 => '7 Days',
+                                                                ];
+                                                            @endphp
+
+                                                            @foreach ($presets as $hours => $label)
+                                                                <button
+                                                                    onclick="generateWithPreset({{ $video->id }}, {{ $hours }})"
+                                                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                    {{ $label }}
+                                                                </button>
+                                                            @endforeach
+
                                                         </div>
 
                                                         <!-- Custom datetime picker -->

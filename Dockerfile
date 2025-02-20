@@ -48,3 +48,5 @@ RUN mkdir -p /var/www/html/storage /var/www/html/bootstrap/cache \
 
 # ユーザー設定
 RUN usermod -u ${USER_ID} www-data && groupmod -g ${GROUP_ID} www-data
+
+RUN ln -snf /usr/share/zoneinfo/Asia/Tokyo /etc/localtime && echo "Asia/Tokyo" > /etc/timezone

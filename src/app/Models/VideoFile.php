@@ -105,4 +105,10 @@ class VideoFile extends Model
 
         return 'other';
     }
+
+
+    protected function serializeDate(\DateTimeInterface $date)
+    {
+        return \Carbon\Carbon::parse($date)->timezone('Asia/Tokyo')->toDateTimeString();
+    }
 }
