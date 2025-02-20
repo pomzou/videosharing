@@ -87,11 +87,6 @@ class VideoShareController extends Controller
                 ]
             ]);
 
-            // URLを保存
-            $videoFile->update([
-                'current_signed_url' => $signedUrl,
-                'url_expires_at' => $request->expires_at
-            ]);
 
             // アクセスログに記録
             $share->accessLogs()->create([

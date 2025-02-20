@@ -360,7 +360,6 @@
 
                                         <!-- Download Link Section -->
                                         <div class="space-y-3">
-                                            <!-- Timer & URL Display (期限内の場合) -->
                                             @if ($video->url_expires_at && $video->url_expires_at->isFuture())
                                                 <div id="timer-{{ $video->id }}" class="text-sm text-gray-600">
                                                     <div class="flex justify-between items-center">
@@ -385,28 +384,6 @@
                                                     </div>
                                                 </div>
                                             @else
-                                                <!-- 期限切れメッセージ (期限切れの場合) -->
-                                                @if ($video->url_expires_at && $video->url_expires_at->isPast())
-                                                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                                                        <div class="flex">
-                                                            <div class="flex-shrink-0">
-                                                                <svg class="h-5 w-5 text-yellow-400"
-                                                                    viewBox="0 0 20 20" fill="currentColor">
-                                                                    <path fill-rule="evenodd"
-                                                                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                                                        clip-rule="evenodd" />
-                                                                </svg>
-                                                            </div>
-                                                            <div class="ml-3">
-                                                                <p class="text-sm text-yellow-700">
-                                                                    This download link has expired. Would you like to
-                                                                    extend it?
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                @endif
-
                                                 <!-- Generate/Extend Button -->
                                                 <button id="generate-btn-{{ $video->id }}"
                                                     onclick="showExpiryOptions({{ $video->id }})"
@@ -492,36 +469,19 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            window.generateSignedUrl = async function(videoId) {
-                try {
-                    const response = await fetch(`/videos/${videoId}/signed-url`);
-                    const data = await response.json();
-
-                    if (data.url) {
-                        const urlDiv = document.getElementById(`url-${videoId}`);
-                        const urlInput = document.getElementById(`url-input-${videoId}`);
-                        const timerDiv = document.getElementById(`timer-${videoId}`);
-                        const generateBtn = document.getElementById(`generate-btn-${videoId}`);
-
-                        urlInput.value = data.url;
-                        urlDiv.classList.remove('hidden');
-                        timerDiv.classList.remove('hidden');
-                        generateBtn.classList.add('hidden');
-
-                        const expiryTime = new Date(data.expires_at).getTime();
-                        updateTimer(videoId, expiryTime);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Failed to generate download link');
-                }
-            };
-
+            // タイマー関連の関数
             window.formatTime = function(seconds) {
-                const hours = Math.floor(seconds / 3600);
+                const days = Math.floor(seconds / 86400);
+                const hours = Math.floor((seconds % 86400) / 3600);
                 const minutes = Math.floor((seconds % 3600) / 60);
                 const remainingSeconds = seconds % 60;
-                return `${hours}h ${minutes}m ${remainingSeconds}s`;
+
+                let timeString = '';
+                if (days > 0) timeString += `${days}d `;
+                if (hours > 0 || days > 0) timeString += `${hours}h `;
+                timeString += `${minutes}m ${remainingSeconds}s`;
+
+                return timeString;
             };
 
             window.updateTimer = function(videoId, expiryTime) {
@@ -547,99 +507,32 @@
                 urlInput.select();
                 document.execCommand('copy');
             };
+
+            // 初期化処理
+            @foreach ($videos as $video)
+                @if ($video->url_expires_at && $video->url_expires_at->isFuture())
+                    initializeTimer(
+                        {{ $video->id }},
+                        new Date('{{ $video->url_expires_at->toISOString() }}').getTime()
+                    );
+                @endif
+            @endforeach
         });
+        // URL生成関連の関数
+        function updateURLDisplay(videoId, url, expiresAt) {
+            const urlDiv = document.getElementById(`url-${videoId}`);
+            const urlInput = document.getElementById(`url-input-${videoId}`);
+            const timerDiv = document.getElementById(`timer-${videoId}`);
+            const generateBtn = document.getElementById(`generate-btn-${videoId}`);
 
-        function confirmDelete(videoId) {
-            document.getElementById(`delete-modal-${videoId}`).classList.remove('hidden');
-        }
-
-        async function generateSignedUrl(videoId) {
-            try {
-                const response = await fetch(`/videos/${videoId}/signed-url`, {
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    }
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to generate download link');
-                }
-
-                if (data.url) {
-                    const urlDiv = document.getElementById(`url-${videoId}`);
-                    const urlInput = document.getElementById(`url-input-${videoId}`);
-                    const timerDiv = document.getElementById(`timer-${videoId}`);
-                    const generateBtn = document.getElementById(`generate-btn-${videoId}`);
-
-                    if (urlInput) {
-                        urlInput.value = data.url;
-                    }
-                    if (urlDiv) {
-                        urlDiv.classList.remove('hidden');
-                    }
-                    if (generateBtn) {
-                        generateBtn.classList.add('hidden');
-                    }
-                    if (timerDiv) {
-                        timerDiv.classList.remove('hidden');
-                        const expiryTime = new Date(data.expires_at).getTime();
-                        updateTimer(videoId, expiryTime);
-                    }
-
-                    showNotification('Download link generated successfully', 'success');
-
-                    // ページをリロードして最新の状態を表示
-                    window.location.reload();
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showNotification(error.message, 'error');
+            if (urlInput) urlInput.value = url;
+            if (urlDiv) urlDiv.classList.remove('hidden');
+            if (generateBtn) generateBtn.classList.add('hidden');
+            if (timerDiv) {
+                timerDiv.classList.remove('hidden');
+                const expiryTime = new Date(expiresAt).getTime();
+                updateTimer(videoId, expiryTime);
             }
-        }
-
-        function showExpiryOptions(videoId) {
-            document.getElementById(`expiry-modal-${videoId}`).classList.remove('hidden');
-        }
-
-        function closeExpiryModal(videoId) {
-            document.getElementById(`expiry-modal-${videoId}`).classList.add('hidden');
-        }
-
-        async function generateWithPreset(videoId, hours) {
-            const expiryDate = new Date();
-            expiryDate.setHours(expiryDate.getHours() + hours);
-            await generateSignedUrlWithExpiry(videoId, expiryDate.toISOString());
-        }
-
-        async function generateWithCustom(videoId) {
-            const customExpiry = document.getElementById(`custom-expiry-${videoId}`).value;
-            if (!customExpiry) {
-                showNotification('Please select a custom expiry time', 'error');
-                return;
-            }
-            await generateSignedUrlWithExpiry(videoId, new Date(customExpiry).toISOString());
-        }
-
-        function generateWithCustom(videoId) {
-            const customExpiry = document.getElementById(`custom-expiry-${videoId}`).value;
-            if (!customExpiry) {
-                showNotification('Please select a custom expiry time', 'error');
-                return;
-            }
-
-            const expiryDate = new Date(customExpiry);
-            const now = new Date();
-            const hoursDiff = (expiryDate - now) / (1000 * 60 * 60);
-
-            if (hoursDiff > 168) {
-                showNotification('The expiry time cannot exceed 7 days', 'error');
-                return;
-            }
-
-            generateSignedUrlWithExpiry(videoId, customExpiry);
         }
 
         async function generateSignedUrlWithExpiry(videoId, expiryTime) {
@@ -664,27 +557,8 @@
 
                 if (data.url) {
                     closeExpiryModal(videoId);
-                    const urlDiv = document.getElementById(`url-${videoId}`);
-                    const urlInput = document.getElementById(`url-input-${videoId}`);
-                    const timerDiv = document.getElementById(`timer-${videoId}`);
-                    const generateBtn = document.getElementById(`generate-btn-${videoId}`);
-
-                    if (urlInput) {
-                        urlInput.value = data.url;
-                    }
-                    if (urlDiv) {
-                        urlDiv.classList.remove('hidden');
-                    }
-                    if (generateBtn) {
-                        generateBtn.classList.add('hidden');
-                    }
-                    if (timerDiv) {
-                        timerDiv.classList.remove('hidden');
-                        initializeTimer(videoId, new Date(data.expires_at).getTime());
-                    }
-
+                    updateURLDisplay(videoId, data.url, data.expires_at);
                     showNotification('Download link generated successfully', 'success');
-                    window.location.reload();
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -692,18 +566,139 @@
             }
         }
 
-        // ページ読み込み時にタイマーを初期化
-        document.addEventListener('DOMContentLoaded', function() {
-            // すべてのビデオのタイマーを初期化
-            @foreach ($videos as $video)
-                @if ($video->url_expires_at && $video->url_expires_at->isFuture())
-                    initializeTimer(
-                        {{ $video->id }},
-                        new Date('{{ $video->url_expires_at->toISOString() }}').getTime()
-                    );
-                @endif
-            @endforeach
-        });
+        async function generateWithPreset(videoId, hours) {
+            const expiryDate = new Date();
+            expiryDate.setHours(expiryDate.getHours() + hours);
+            await generateSignedUrlWithExpiry(videoId, expiryDate.toISOString());
+        }
+
+        async function generateWithCustom(videoId) {
+            const customExpiry = document.getElementById(`custom-expiry-${videoId}`).value;
+            if (!customExpiry) {
+                showNotification('Please select a custom expiry time', 'error');
+                return;
+            }
+
+            const expiryDate = new Date(customExpiry);
+            const now = new Date();
+            const hoursDiff = (expiryDate - now) / (1000 * 60 * 60);
+
+            if (hoursDiff > 168) {
+                showNotification('The expiry time cannot exceed 7 days', 'error');
+                return;
+            }
+
+            await generateSignedUrlWithExpiry(videoId, customExpiry);
+        }
+        // 共有関連の関数
+        async function executeShare(videoId) {
+            const email = document.getElementById(`email-${videoId}`).value;
+            const expiresAt = document.getElementById(`expires-${videoId}`).value;
+
+            try {
+                const response = await fetch(`/videos/${videoId}/share`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email,
+                        expires_at: expiresAt,
+                        confirmed: true
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || data.message || 'Failed to share video');
+                }
+
+                showNotification(`Video shared successfully. An email has been sent to ${email}`, 'success');
+                closeShareModal(videoId);
+                window.location.reload();
+            } catch (error) {
+                console.error('Share error:', error);
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function confirmShare(event, videoId) {
+            event.preventDefault();
+
+            const email = document.getElementById(`email-${videoId}`).value;
+            const expiresAt = document.getElementById(`expires-${videoId}`).value;
+
+            const expiryDate = new Date(expiresAt);
+            const now = new Date();
+            const hoursDiff = (expiryDate - now) / (1000 * 60 * 60);
+
+            if (hoursDiff > 168) {
+                showNotification('The expiration time cannot exceed 7 days', 'error');
+                return;
+            }
+
+            try {
+                document.getElementById(`confirm-email-${videoId}`).textContent = email;
+                document.getElementById(`confirm-expires-${videoId}`).textContent =
+                    new Date(expiresAt).toLocaleString();
+
+                document.getElementById(`share-form-${videoId}`).classList.add('hidden');
+                document.getElementById(`share-confirm-${videoId}`).classList.remove('hidden');
+            } catch (error) {
+                console.error('Confirmation error:', error);
+                showNotification(error.message, 'error');
+            }
+        }
+
+        // UI操作関連の関数
+        function showExpiryOptions(videoId) {
+            document.getElementById(`expiry-modal-${videoId}`).classList.remove('hidden');
+        }
+
+        function closeExpiryModal(videoId) {
+            document.getElementById(`expiry-modal-${videoId}`).classList.add('hidden');
+        }
+
+        function openShareModal(videoId) {
+            document.getElementById(`share-modal-${videoId}`).classList.remove('hidden');
+        }
+
+        function closeShareModal(videoId) {
+            document.getElementById(`share-modal-${videoId}`).classList.add('hidden');
+        }
+
+        function backToShareForm(videoId) {
+            document.getElementById(`share-form-${videoId}`).classList.remove('hidden');
+            document.getElementById(`share-confirm-${videoId}`).classList.add('hidden');
+        }
+
+        function toggleShareList(videoId) {
+            const list = document.getElementById(`shares-list-${videoId}`);
+            const arrow = document.getElementById(`share-arrow-${videoId}`);
+            list.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        }
+
+        function confirmDelete(videoId) {
+            document.getElementById(`delete-modal-${videoId}`).classList.remove('hidden');
+        }
+        // その他のユーティリティ関数
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-md ${
+        type === 'success' ? 'bg-green-500' : 'bg-red-500'
+    } text-white shadow-lg transition-opacity duration-500`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
 
         function initializeTimer(videoId, expiryTime) {
             const timerElement = document.querySelector(`#timer-${videoId} span`);
@@ -715,7 +710,6 @@
 
                 if (timeLeft <= 0) {
                     clearInterval(interval);
-                    // 非所有者の場合のみURLをクリア
                     const videoElement = document.getElementById(`video-${videoId}`);
                     if (videoElement && !videoElement.hasAttribute('data-owner')) {
                         videoElement.pause();
@@ -739,42 +733,28 @@
             const interval = setInterval(updateRemainingTime, 1000);
         }
 
-        function formatTime(seconds) {
-            const days = Math.floor(seconds / 86400);
-            const hours = Math.floor((seconds % 86400) / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const remainingSeconds = seconds % 60;
+        // アクセス制御関連の関数
+        function checkExpiry(videoElement, videoId, isOwner) {
+            if (isOwner) return;
 
-            let timeString = '';
-            if (days > 0) {
-                timeString += `${days}d `;
+            const timerDiv = document.getElementById(`timer-${videoId}`);
+            const hasExpired = timerDiv ? timerDiv.classList.contains('hidden') : true;
+
+            if (hasExpired) {
+                videoElement.pause();
+                showNotification('This video link has expired. Please generate a new download link.', 'error');
             }
-            if (hours > 0 || days > 0) {
-                timeString += `${hours}h `;
+        }
+        async function revokeAccess(videoId) {
+            if (!confirm(
+                    'Are you sure you want to revoke access to this URL? This will invalidate the current download link.'
+                )) {
+                return;
             }
-            timeString += `${minutes}m ${remainingSeconds}s`;
 
-            return timeString;
-        }
-
-        function showNotification(message, type) {
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 p-4 rounded-md ${
-        type === 'success' ? 'bg-green-500' : 'bg-red-500'
-    } text-white shadow-lg transition-opacity duration-500`;
-            notification.textContent = message;
-            document.body.appendChild(notification);
-
-            setTimeout(() => {
-                notification.style.opacity = '0';
-                setTimeout(() => notification.remove(), 500);
-            }, 3000);
-        }
-
-        async function deleteVideo(videoId) {
             try {
-                const response = await fetch(`/videos/${videoId}`, {
-                    method: 'DELETE',
+                const response = await fetch(`/videos/${videoId}/revoke`, {
+                    method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Accept': 'application/json'
@@ -782,117 +762,14 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to delete file');
+                    throw new Error('Failed to revoke access');
                 }
 
-                const data = await response.json();
-
-                // ファイル要素の削除
-                const fileElement = document.querySelector(`[data-file-id="${videoId}"]`);
-                if (fileElement) {
-                    fileElement.remove();
-                }
-
-                // モーダルを閉じる
-                const modal = document.getElementById(`delete-modal-${videoId}`);
-                if (modal) {
-                    modal.classList.add('hidden');
-                }
-
-                showNotification('File deleted successfully', 'success');
-            } catch (error) {
-                console.error('Delete error:', error);
-                showNotification('Failed to delete file', 'error');
-            }
-        }
-
-        function openShareModal(videoId) {
-            document.getElementById(`share-modal-${videoId}`).classList.remove('hidden');
-        }
-
-        function closeShareModal(videoId) {
-            document.getElementById(`share-modal-${videoId}`).classList.add('hidden');
-        }
-
-        async function confirmShare(event, videoId) {
-            event.preventDefault();
-
-            const email = document.getElementById(`email-${videoId}`).value;
-            const expiresAt = document.getElementById(`expires-${videoId}`).value;
-
-            try {
-                const response = await fetch(`/videos/${videoId}/share/confirm`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        email,
-                        expires_at: expiresAt
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || data.message || 'Failed to validate share details');
-                }
-
-                // 確認画面に情報を表示
-                document.getElementById(`confirm-email-${videoId}`).textContent = email;
-                document.getElementById(`confirm-expires-${videoId}`).textContent = new Date(expiresAt)
-                    .toLocaleString();
-
-                // フォームを隠して確認画面を表示
-                document.getElementById(`share-form-${videoId}`).classList.add('hidden');
-                document.getElementById(`share-confirm-${videoId}`).classList.remove('hidden');
-
-            } catch (error) {
-                console.error('Confirmation error:', error);
-                showNotification(error.message, 'error');
-            }
-        }
-
-        function backToShareForm(videoId) {
-            document.getElementById(`share-form-${videoId}`).classList.remove('hidden');
-            document.getElementById(`share-confirm-${videoId}`).classList.add('hidden');
-        }
-
-        async function executeShare(videoId) {
-            const email = document.getElementById(`email-${videoId}`).value;
-            const expiresAt = document.getElementById(`expires-${videoId}`).value;
-
-            try {
-                const response = await fetch(`/videos/${videoId}/share`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        email,
-                        expires_at: expiresAt,
-                        confirmed: true
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || data.message || 'Failed to share video');
-                }
-
-                showNotification('Video shared successfully', 'success');
-                closeShareModal(videoId);
-
-                // 共有リストを更新
+                showNotification('Access revoked successfully', 'success');
                 window.location.reload();
             } catch (error) {
-                console.error('Share error:', error);
-                showNotification(error.message, 'error');
+                console.error('Error:', error);
+                showNotification('Failed to revoke access. Please try again.', 'error');
             }
         }
 
@@ -915,7 +792,6 @@
                     throw new Error(data.error || 'Failed to revoke access');
                 }
 
-                // 成功したら即座にUIを更新
                 const shareElement = document.querySelector(`[data-share-id="${shareId}"]`);
                 if (shareElement) {
                     const actionDiv = shareElement.querySelector('.flex.items-center');
@@ -931,104 +807,10 @@
             }
         }
 
-        async function confirmShare(event, videoId) {
-            event.preventDefault();
-
-            const email = document.getElementById(`email-${videoId}`).value;
-            const expiresAt = document.getElementById(`expires-${videoId}`).value;
-
-            // 有効期限のチェック
-            const expiryDate = new Date(expiresAt);
-            const now = new Date();
-            const hoursDiff = (expiryDate - now) / (1000 * 60 * 60);
-
-            if (hoursDiff > 168) {
-                showNotification('The expiration time cannot exceed 7 days', 'error');
-                return;
-            }
-
+        async function deleteVideo(videoId) {
             try {
-                // 確認画面に情報を表示
-                document.getElementById(`confirm-email-${videoId}`).textContent = email;
-                document.getElementById(`confirm-expires-${videoId}`).textContent = new Date(expiresAt)
-                    .toLocaleString();
-
-                // フォームを隠して確認画面を表示
-                document.getElementById(`share-form-${videoId}`).classList.add('hidden');
-                document.getElementById(`share-confirm-${videoId}`).classList.remove('hidden');
-            } catch (error) {
-                console.error('Confirmation error:', error);
-                showNotification(error.message, 'error');
-            }
-        }
-
-        async function executeShare(videoId) {
-            const email = document.getElementById(`email-${videoId}`).value;
-            const expiresAt = document.getElementById(`expires-${videoId}`).value;
-
-            try {
-                const response = await fetch(`/videos/${videoId}/share`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        email,
-                        expires_at: expiresAt,
-                        confirmed: true
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || data.message || 'Failed to share video');
-                }
-
-                showNotification('Video shared successfully. An email has been sent to ' + email, 'success');
-                closeShareModal(videoId);
-                window.location.reload();
-            } catch (error) {
-                console.error('Share error:', error);
-                showNotification(error.message, 'error');
-            }
-        }
-
-        function toggleShareList(videoId) {
-            const list = document.getElementById(`shares-list-${videoId}`);
-            const arrow = document.getElementById(`share-arrow-${videoId}`);
-
-            list.classList.toggle('hidden');
-            arrow.classList.toggle('rotate-180');
-        }
-
-        function checkExpiry(videoElement, videoId, isOwner) {
-            if (isOwner) {
-                // 所有者は常に再生可能
-                return;
-            }
-
-            const timerDiv = document.getElementById(`timer-${videoId}`);
-            const hasExpired = timerDiv ? timerDiv.classList.contains('hidden') : true;
-
-            if (hasExpired) {
-                videoElement.pause();
-                showNotification('This video link has expired. Please generate a new download link.', 'error');
-            }
-        }
-
-        async function revokeAccess(videoId) {
-            if (!confirm(
-                    'Are you sure you want to revoke access to this URL? This will invalidate the current download link.'
-                )) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/videos/${videoId}/revoke`, {
-                    method: 'POST',
+                const response = await fetch(`/videos/${videoId}`, {
+                    method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Accept': 'application/json'
@@ -1036,17 +818,25 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to revoke access');
+                    throw new Error('Failed to delete file');
                 }
 
-                showNotification('Access revoked successfully', 'success');
+                const data = await response.json();
 
-                // ページをリロード
-                window.location.reload();
+                const fileElement = document.querySelector(`[data-file-id="${videoId}"]`);
+                if (fileElement) {
+                    fileElement.remove();
+                }
 
+                const modal = document.getElementById(`delete-modal-${videoId}`);
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
+
+                showNotification('File deleted successfully', 'success');
             } catch (error) {
-                console.error('Error:', error);
-                showNotification('Failed to revoke access. Please try again.', 'error');
+                console.error('Delete error:', error);
+                showNotification('Failed to delete file', 'error');
             }
         }
     </script>
