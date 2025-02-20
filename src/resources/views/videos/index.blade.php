@@ -308,7 +308,7 @@
                                                                     <span class="text-xs text-red-500">Expired</span>
                                                                 @else
                                                                     <button
-                                                                        onclick="revokeAccess({{ $share->id }})"
+                                                                        onclick="revokeShareAccess({{ $share->id }})"
                                                                         class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
                                                                         Revoke Access
                                                                     </button>
@@ -896,7 +896,7 @@
             }
         }
 
-        async function revokeAccess(shareId) {
+        async function revokeShareAccess(shareId) {
             if (!confirm('Are you sure you want to revoke access?')) {
                 return;
             }
