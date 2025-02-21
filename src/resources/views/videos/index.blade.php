@@ -152,16 +152,6 @@
                                                     <span><strong>Uploaded:</strong>
                                                         {{ $video->created_at->diffForHumans() }}</span>
                                                 </li>
-                                                <li class="flex items-center">
-                                                    <svg class="w-5 h-5 mr-2 text-gray-500" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                                    </svg>
-                                                    <span><strong>Privacy:</strong>
-                                                        {{ ucfirst($video->privacy) }}</span>
-                                                </li>
                                             </ul>
                                         </div>
 
@@ -761,9 +751,9 @@
                         ${isExpired
                             ? '<span class="text-xs text-red-500">Expired</span>'
                             : `<button onclick="revokeShareAccess(${share.id})"
-                                            class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                            Revoke Access
-                                           </button>`}
+                                                    class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                    Revoke Access
+                                                   </button>`}
                     </div>
                 </div>
             `;

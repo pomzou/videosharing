@@ -78,7 +78,6 @@ class VideoFileController extends Controller
                     'csv'
                 ])
             ],
-            'privacy' => 'required|in:public,private',
         ]);
 
         try {
@@ -105,7 +104,6 @@ class VideoFileController extends Controller
                 'mime_type' => $file->getMimeType(),
                 'file_size' => $file->getSize(),
                 's3_path' => $s3Path,
-                'privacy' => $request->privacy,
             ]);
 
             return redirect()->route('dashboard')
