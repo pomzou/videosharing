@@ -532,37 +532,6 @@
             }
         }
 
-        async function generateSignedUrlWithExpiry(videoId, expiryTime) {
-            try {
-                const response = await fetch(`/videos/${videoId}/signed-url`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        expires_at: expiryTime
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to generate download link');
-                }
-
-                if (data.url) {
-                    closeExpiryModal(videoId);
-                    updateURLDisplay(videoId, data.url, data.expires_at);
-                    showNotification('Download link generated successfully', 'success');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showNotification(error.message, 'error');
-            }
-        }
-
         async function generateWithPreset(videoId, hours) {
             const expiryDate = new Date();
             expiryDate.setHours(expiryDate.getHours() + hours);
@@ -586,40 +555,6 @@
             }
 
             await generateSignedUrlWithExpiry(videoId, customExpiry);
-        }
-        // 共有関連の関数
-        async function executeShare(videoId) {
-            const email = document.getElementById(`email-${videoId}`).value;
-            const expiresAt = document.getElementById(`expires-${videoId}`).value;
-
-            try {
-                const response = await fetch(`/videos/${videoId}/share`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        email,
-                        expires_at: expiresAt,
-                        confirmed: true
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || data.message || 'Failed to share video');
-                }
-
-                showNotification(`Video shared successfully. An email has been sent to ${email}`, 'success');
-                closeShareModal(videoId);
-                window.location.reload();
-            } catch (error) {
-                console.error('Share error:', error);
-                showNotification(error.message, 'error');
-            }
         }
 
         async function confirmShare(event, videoId) {
@@ -804,6 +739,155 @@
             }
         }
 
+        // 共有リストの更新
+        function updateShareList(videoId, shares) {
+            const sharesList = document.getElementById(`shares-list-${videoId}`);
+            if (!sharesList) return;
+
+            let html = '';
+            shares.forEach(share => {
+                if (share.share_type === 'email') {
+                    const isExpired = !share.is_active || new Date(share.expires_at) < new Date();
+                    html += `
+                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                    data-share-id="${share.id}">
+                    <div>
+                        <span class="text-sm text-gray-600">${share.email}</span>
+                        <span class="text-xs text-gray-500 ml-2">
+                            Expires: ${new Date(share.expires_at).toLocaleString()}
+                        </span>
+                    </div>
+                    <div class="flex items-center">
+                        ${isExpired
+                            ? '<span class="text-xs text-red-500">Expired</span>'
+                            : `<button onclick="revokeShareAccess(${share.id})"
+                                            class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                            Revoke Access
+                                           </button>`}
+                    </div>
+                </div>
+            `;
+                }
+            });
+            sharesList.innerHTML = html;
+        }
+
+        // 共有カウントの更新
+        function updateShareCount(videoId, count) {
+            const countElement = document.querySelector(`button[onclick="toggleShareList(${videoId})"] span`);
+            if (countElement) {
+                countElement.textContent = `Shared With (${count})`;
+            }
+        }
+
+        // URL表示の更新
+        function updateURLSection(videoId, data) {
+            // まず、Download Link Section 全体のコンテナを探す
+            const section = document.querySelector(`.space-y-3`);
+            if (!section) return;
+
+            if (data.url && data.expires_at) {
+                section.innerHTML = `
+            <div id="timer-${videoId}" class="text-sm text-gray-600">
+                <div class="flex justify-between items-center">
+                    <p>Time remaining: <span class="text-indigo-600 font-medium"></span></p>
+                    <button onclick="revokeAccess(${videoId})"
+                        class="px-3 py-1 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 focus:outline-none">
+                        Revoke URL
+                    </button>
+                </div>
+            </div>
+            <div id="url-${videoId}" class="space-y-2">
+                <div class="flex items-center gap-2">
+                    <input type="text" id="url-input-${videoId}"
+                        value="${data.url}"
+                        class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        readonly>
+                    <button onclick="copyUrl(${videoId})"
+                        class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                        Copy
+                    </button>
+                </div>
+            </div>
+        `;
+
+                // タイマーを初期化
+                initializeTimer(videoId, new Date(data.expires_at).getTime());
+            }
+        }
+
+        // メール共有実行
+        async function executeShare(videoId) {
+            const email = document.getElementById(`email-${videoId}`).value;
+            const expiresAt = document.getElementById(`expires-${videoId}`).value;
+
+            try {
+                const response = await fetch(`/videos/${videoId}/share`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email,
+                        expires_at: expiresAt,
+                        confirmed: true
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || data.message || 'Failed to share video');
+                }
+
+                showNotification(`Video shared successfully. An email has been sent to ${email}`, 'success');
+                closeShareModal(videoId);
+
+                // 共有リストと共有カウントのみを更新
+                updateShareList(videoId, data.shares);
+                updateShareCount(videoId, data.shares.length);
+
+            } catch (error) {
+                console.error('Share error:', error);
+                showNotification(error.message, 'error');
+            }
+        }
+
+        // URL生成関数
+        async function generateSignedUrlWithExpiry(videoId, expiryTime) {
+            try {
+                const response = await fetch(`/videos/${videoId}/signed-url`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        expires_at: expiryTime
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to generate download link');
+                }
+
+                if (data.url) {
+                    closeExpiryModal(videoId);
+                    updateURLSection(videoId, data);
+                    showNotification('Download link generated successfully', 'success');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification(error.message, 'error');
+            }
+        }
+
+        // 動画削除
         async function deleteVideo(videoId) {
             try {
                 const response = await fetch(`/videos/${videoId}`, {
@@ -818,11 +902,12 @@
                     throw new Error('Failed to delete file');
                 }
 
-                const data = await response.json();
-
+                // カード要素を削除してアニメーション
                 const fileElement = document.querySelector(`[data-file-id="${videoId}"]`);
                 if (fileElement) {
-                    fileElement.remove();
+                    fileElement.style.transition = 'opacity 0.3s ease-out';
+                    fileElement.style.opacity = '0';
+                    setTimeout(() => fileElement.remove(), 300);
                 }
 
                 const modal = document.getElementById(`delete-modal-${videoId}`);

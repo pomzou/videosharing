@@ -129,14 +129,13 @@ class VideoFileController extends Controller
                     'after:now',
                     function ($attribute, $value, $fail) {
                         $hours = now()->diffInHours(new \DateTime($value));
-                        if ($hours > 168) { // 7日間 = 168時間
+                        if ($hours > 168) {
                             $fail('The expiry time cannot exceed 7 days.');
                         }
                     },
                 ]
             ]);
 
-            // 日本時間で期限を設定
             $expiresAt = new \DateTime($request->expires_at, new \DateTimeZone('Asia/Tokyo'));
             $hours = now()->diffInHours($expiresAt);
 
@@ -149,15 +148,11 @@ class VideoFileController extends Controller
                 ],
             ];
 
-            // 12時間以上の場合はIAM認証情報を使用
-            if ($hours >= 12) {
-                if (!config('filesystems.disks.s3.key') || !config('filesystems.disks.s3.secret')) {
-                    throw new \Exception('IAM credentials are required for URLs valid longer than 12 hours.');
-                }
+            if ($hours >= 12 && (!config('filesystems.disks.s3.key') || !config('filesystems.disks.s3.secret'))) {
+                throw new \Exception('IAM credentials are required for URLs valid longer than 12 hours.');
             }
 
             $s3Client = new S3Client($credentials);
-
             $cmd = $s3Client->getCommand('GetObject', [
                 'Bucket' => config('filesystems.disks.s3.bucket'),
                 'Key'    => $videoFile->s3_path
@@ -166,31 +161,23 @@ class VideoFileController extends Controller
             $request = $s3Client->createPresignedRequest($cmd, $request->expires_at);
             $signedUrl = (string) $request->getUri();
 
-            $videoFile->update([
-                'url_expires_at' => $expiresAt,
-                'current_signed_url' => $signedUrl
-            ]);
-
-            Log::info('Signed URL generated', [
-                'video_id' => $videoFile->id,
-                'expires_in_hours' => $hours
-            ]);
-
-            // S3から取得したexpires_atを日本時間に変換する
+            // S3から取得したexpires_atを日本時間に変換
             $expiresAtUtc = $expiresAt->setTimezone(new \DateTimeZone('UTC'));
-
-            // 日本時間に変換
             $expiresAtTokyo = $expiresAtUtc->setTimezone(new \DateTimeZone('Asia/Tokyo'));
 
-            // DBに保存する際も日本時間で保存したい場合
             $videoFile->update([
                 'url_expires_at' => $expiresAtTokyo,
                 'current_signed_url' => $signedUrl
             ]);
 
+            // ビデオの最新情報を取得
+            $videoFile->refresh();
+
             return response()->json([
+                'message' => 'URL generated successfully',
                 'url' => $signedUrl,
-                'expires_at' => $expiresAtTokyo->format('c') // 日本時間で表示
+                'expires_at' => $expiresAtTokyo->format('c'),
+                'download_section' => view('videos.partials.download-section', ['video' => $videoFile])->render()
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to generate signed URL', [

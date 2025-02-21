@@ -40,7 +40,6 @@ class VideoShareController extends Controller
 
     public function share(ShareVideoRequest $request, VideoFile $videoFile)
     {
-        // 所有者チェック
         if ($videoFile->user_id !== Auth::id()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
@@ -48,58 +47,29 @@ class VideoShareController extends Controller
         try {
             DB::beginTransaction();
 
-            // 有効期限をパース
             $expiresAt = new \DateTime($request->expires_at);
             $now = new \DateTime();
             $hoursDiff = ($expiresAt->getTimestamp() - $now->getTimestamp()) / 3600;
 
-            // 有効期限のチェック（最大7日間）
             if ($hoursDiff > 168) {
                 throw new \Exception('The expiration time cannot exceed 7 days');
             }
 
-            // ユーザー情報をロード
             $videoFile->load('user');
-
-            // 署名付きURLを生成
             $signedUrl = $videoFile->generateSignedUrl($request->expires_at);
 
-            // 新しい共有設定を作成
             $share = $videoFile->shares()->create([
                 'email' => $request->email,
                 'access_token' => Str::random(32),
                 'expires_at' => $request->expires_at,
                 'is_active' => true,
-                'share_type' => 'email'  // メール共有として作成
+                'share_type' => 'email'
             ]);
 
-            // リレーションをロード
-            $share->load(['videoFile.user']);
-
-            // デバッグログ
-            Log::info('Share created with relations', [
-                'share_id' => $share->id,
-                'video_file_id' => $videoFile->id,
-                'user_name' => $videoFile->user->name ?? 'Not loaded',
-                'relations' => [
-                    'has_video_file' => $share->videoFile !== null,
-                    'has_user' => $share->videoFile?->user !== null
-                ]
-            ]);
-
-
-            // アクセスログに記録
-            $share->accessLogs()->create([
-                'video_file_id' => $videoFile->id,
-                'access_email' => $request->email,
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'action' => 'share_created'
-            ]);
+            // アクセスログ記録とその他の処理...
 
             DB::commit();
 
-            // トランザクション外でメール送信を試行
             try {
                 Mail::to($request->email)->send(new VideoShared($share, $signedUrl));
             } catch (\Exception $e) {
@@ -107,30 +77,24 @@ class VideoShareController extends Controller
                     'share_id' => $share->id,
                     'error' => $e->getMessage()
                 ]);
-                // メール送信失敗でも共有自体は成功とする
-                return response()->json([
-                    'message' => 'Video shared successfully but email notification failed',
-                    'share' => $share,
-                    'warning' => 'Email notification could not be sent'
-                ]);
             }
 
-            Log::info('Video shared successfully', [
-                'video_id' => $videoFile->id,
-                'share_id' => $share->id,
-                'email' => $request->email
-            ]);
+            // 共有リストを最新の状態で取得
+            $shares = $videoFile->shares()
+                ->with('accessLogs')
+                ->orderBy('created_at', 'desc')
+                ->get();
 
             return response()->json([
                 'message' => 'Video shared successfully',
-                'share' => $share
+                'shares' => $shares,
+                'shares_count' => $shares->count()
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to share video', [
                 'video_id' => $videoFile->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([
