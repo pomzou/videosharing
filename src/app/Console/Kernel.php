@@ -32,6 +32,12 @@ class Kernel extends ConsoleKernel
             ->everyThirtyMinutes()
             ->withoutOverlapping()
             ->appendOutputTo(storage_path('logs/url_monitor.log'));
+
+        // 30分ごとに期限切れの動画共有を処理
+        $schedule->command('videos:expire-shares')
+            ->everyThirtyMinutes()
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/expire_video_shares.log'));
     }
 
     /**

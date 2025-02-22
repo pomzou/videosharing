@@ -9,14 +9,14 @@ return new class extends Migration
     public function up()
     {
         Schema::table('video_files', function (Blueprint $table) {
-            $table->boolean('is_active')->default(true)->after('privacy');
+            $table->text('current_signed_url')->nullable()->change();  // NULLを許可
         });
     }
 
     public function down()
     {
         Schema::table('video_files', function (Blueprint $table) {
-            $table->dropColumn('is_active');
+            $table->string('current_signed_url', 255)->nullable()->change();  // NULLを許可
         });
     }
 };

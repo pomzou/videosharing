@@ -50,10 +50,49 @@ class VideoShareExpirationTest extends TestCase
         // 共有リンクにアクセスし、403エラーが返されることを確認
         $response = $this->get(route('access.video', ['token' => $share->access_token]));
         $response->assertStatus(403);
-        $response->assertSee('This share link is no longer active');
+        $response->assertSee('This share link has expired or is no longer active');
 
         // 共有が非アクティブになっていることを確認
         $share->refresh();
         $this->assertFalse($share->is_active);
+    }
+
+    public function testCacheInvalidation()
+    {
+        // テスト用ユーザーを作成
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        // S3モックを設定
+        Storage::fake('s3');
+
+        // テスト用の動画ファイルを作成
+        $videoFile = VideoFile::create([
+            'user_id' => $user->id,
+            'title' => 'Test Video',
+            'file_name' => 'test_video.mp4',
+            'original_name' => 'test_video.mp4',
+            'mime_type' => 'video/mp4',
+            'file_size' => 1024,
+            's3_path' => 'files/test_video.mp4'
+        ]);
+
+        // 共有リンクを作成
+        $expiresAt = now()->addMinute();
+        $share = $videoFile->shares()->create([
+            'email' => 'test@example.com',
+            'access_token' => Str::random(32),
+            'expires_at' => $expiresAt,
+            'is_active' => true,
+            'share_type' => 'email'
+        ]);
+
+        // ここでCDNキャッシュがクリアされたことを確認するロジックを追加
+        // 例えば、モックを使ってAPI呼び出しを確認するなど
+
+        // 共有リンクにアクセスし、403エラーが返されることを確認
+        $response = $this->get(route('access.video', ['token' => $share->access_token]));
+        $response->assertStatus(403);
+        $response->assertSee('This share link has expired or is no longer active');
     }
 }
