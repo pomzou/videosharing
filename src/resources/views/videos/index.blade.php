@@ -190,6 +190,8 @@
                                                                         At</label>
                                                                     <input type="datetime-local"
                                                                         id="expires-{{ $video->id }}" required
+                                                                        min="{{ now()->format('Y-m-d\TH:i') }}" //
+                                                                        過去の日付を選択できないように
                                                                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                                                 </div>
                                                                 <div class="mt-4 flex justify-end space-x-3">
@@ -751,9 +753,9 @@
                         ${isExpired
                             ? '<span class="text-xs text-red-500">Expired</span>'
                             : `<button onclick="revokeShareAccess(${share.id})"
-                                                    class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                    Revoke Access
-                                                   </button>`}
+                                                            class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                            Revoke Access
+                                                           </button>`}
                     </div>
                 </div>
             `;
@@ -835,9 +837,11 @@
                 showNotification(`Video shared successfully. An email has been sent to ${email}`, 'success');
                 closeShareModal(videoId);
 
-                // 共有リストと共有カウントのみを更新
+                // 共有リストを更新
                 updateShareList(videoId, data.shares);
                 updateShareCount(videoId, data.shares.length);
+                // モーダルを閉じる
+                closeShareModal(videoId);
 
             } catch (error) {
                 console.error('Share error:', error);
