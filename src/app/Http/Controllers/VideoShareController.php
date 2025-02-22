@@ -56,22 +56,19 @@ class VideoShareController extends Controller
             }
 
             $videoFile->load('user');
-            $signedUrl = $videoFile->generateSignedUrl($request->expires_at);
-
             $share = $videoFile->shares()->create([
                 'email' => $request->email,
                 'access_token' => Str::random(32),
                 'expires_at' => $request->expires_at,
                 'is_active' => true,
-                'share_type' => 'email'
+                'share_type' => 'email',
+                'shared_url' => $videoFile->generateSignedUrl($request->expires_at) // Store the signed URL in shared_url
             ]);
-
-            // アクセスログ記録とその他の処理...
 
             DB::commit();
 
             try {
-                Mail::to($request->email)->send(new VideoShared($share, $signedUrl));
+                Mail::to($request->email)->send(new VideoShared($share, $share->active_shared_url));
             } catch (\Exception $e) {
                 Log::error('Failed to send email', [
                     'share_id' => $share->id,
@@ -114,8 +111,8 @@ class VideoShareController extends Controller
 
             DB::beginTransaction();
 
-            // 共有設定を無効化
-            $share->update(['is_active' => false]);
+            // 共有設定を無効化し、shared_urlをnullに設定
+            $share->update(['is_active' => false, 'shared_url' => null]);
 
             // アクセスログに記録
             $share->accessLogs()->create([
@@ -156,8 +153,8 @@ class VideoShareController extends Controller
     {
         $share = VideoShare::where('access_token', $token)->firstOrFail();
 
-        // アクティブでない、または期限切れの場合は403
-        if (!$share->is_active || $share->isExpired()) {
+        // アクティブでない、または期限切れ、またはis_activeが0の場合は403
+        if (!$share->is_active || $share->isExpired() || $share->is_active === 0) {
             abort(403, 'This share link is no longer active');
         }
 

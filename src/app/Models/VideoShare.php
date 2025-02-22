@@ -12,8 +12,14 @@ class VideoShare extends Model
         'access_token',
         'expires_at',
         'is_active',
-        'share_type'
+        'share_type',
+        'shared_url' // Added shared_url to fillable
     ];
+
+    public function getActiveSharedUrlAttribute() // Added accessor for active_shared_url
+    {
+        return $this->shared_url; // Assuming shared_url is the source for active_shared_url
+    }
 
     protected $casts = [
         'expires_at' => 'datetime',

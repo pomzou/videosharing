@@ -84,7 +84,7 @@
         </div>
 
         <p>To access this file, use the secure download link below:</p>
-        <a href="{{ $signedUrl }}" class="button">
+        <a href="{{ $share->active_shared_url }}" class="button">
             Download File
         </a>
 
