@@ -18,7 +18,6 @@ class VideoFile extends Model
         'mime_type',
         'file_size',
         's3_path',
-        'privacy',
         'current_signed_url',
         'url_expires_at'
     ];
