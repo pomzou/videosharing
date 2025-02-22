@@ -753,9 +753,9 @@
                         ${isExpired
                             ? '<span class="text-xs text-red-500">Expired</span>'
                             : `<button onclick="revokeShareAccess(${share.id})"
-                                                            class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                            Revoke Access
-                                                           </button>`}
+                                                                class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                Revoke Access
+                                                               </button>`}
                     </div>
                 </div>
             `;
@@ -842,6 +842,11 @@
                 updateShareCount(videoId, data.shares.length);
                 // モーダルを閉じる
                 closeShareModal(videoId);
+                document.getElementById(`share-form-${videoId}`).classList.remove('hidden');
+                document.getElementById(`share-confirm-${videoId}`).classList.add('hidden');
+                // メールアドレスと有効期限の入力フィールドをリセット
+                document.getElementById(`email-${videoId}`).value = '';
+                document.getElementById(`expires-${videoId}`).value = '';
 
             } catch (error) {
                 console.error('Share error:', error);
