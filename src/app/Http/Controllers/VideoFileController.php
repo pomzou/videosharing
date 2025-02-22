@@ -113,6 +113,20 @@ class VideoFileController extends Controller
         }
     }
 
+    public function showVideo($videoId)
+    {
+        $videoFile = VideoFile::find($videoId);
+
+        // URLが無効かどうかを確認
+        if ($videoFile->url_expires_at === null || $videoFile->current_signed_url === null || $videoFile->url_expires_at < now()) {
+            return response()->json(['error' => 'This video link has expired.'], 403);
+        }
+
+        // 有効な場合は動画を表示
+        return view('video.show', compact('videoFile'));
+    }
+
+
     public function generateSignedUrl(Request $request, VideoFile $videoFile)
     {
         if ($videoFile->user_id !== Auth::id()) {

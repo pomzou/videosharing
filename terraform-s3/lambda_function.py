@@ -20,22 +20,51 @@ def lambda_handler(event, context):
             "body": json.dumps({"error": "Missing 'file' parameter"})
         }
 
-    expiration = 3600  # 1時間 (3600秒)
-
+    # 'action'パラメータを取得して、アクセスをリボークするか、署名付きURLを生成するかを決定
+    action = query_params.get("action")
+    
+    if action == "revoke":
+        # アクセスをリボークする
+        try:
+            policy = {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Deny",
+                        "Action": "s3:GetObject",
+                        "Resource": f"arn:aws:s3:::{BUCKET_NAME}/{object_key}"  # 指定されたオブジェクトへのアクセスを拒否
+                    }
+                ]
+            }
+            # バケットポリシーを更新
+            s3.put_bucket_policy(
+                Bucket=BUCKET_NAME,
+                Policy=json.dumps(policy)
+            )
+            return {
+                "statusCode": 200,
+                "body": json.dumps({"message": f"Access to {object_key} has been revoked"})
+            }
+        except Exception as e:
+            return {
+                "statusCode": 500,
+                "body": json.dumps({"error": f"Could not revoke access: {str(e)}"})
+            }
+    
     # 署名付きURLを生成
+    expiration = 3600  # 1時間 (3600秒)
     try:
         url = s3.generate_presigned_url(
             "get_object",
             Params={"Bucket": BUCKET_NAME, "Key": object_key},
             ExpiresIn=expiration
         )
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"url": url})
+        }
     except Exception as e:
         return {
             "statusCode": 500,
             "body": json.dumps({"error": "Could not generate the signed URL"})
         }
-
-    return {
-        "statusCode": 200,
-        "body": json.dumps({"url": url})
-    }

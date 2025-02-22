@@ -669,6 +669,7 @@
                 showNotification('This video link has expired. Please generate a new download link.', 'error');
             }
         }
+
         async function revokeAccess(videoId) {
             if (!confirm(
                     'Are you sure you want to revoke access to this URL? This will invalidate the current download link.'
@@ -753,9 +754,9 @@
                         ${isExpired
                             ? '<span class="text-xs text-red-500">Expired</span>'
                             : `<button onclick="revokeShareAccess(${share.id})"
-                                                                class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                Revoke Access
-                                                               </button>`}
+                                                                    class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                    Revoke Access
+                                                                   </button>`}
                     </div>
                 </div>
             `;
