@@ -22,7 +22,6 @@ class VideoFile extends Model
         'url_expires_at'
     ];
 
-    // 日付として扱うカラムを指定
     protected $casts = [
         'url_expires_at' => 'datetime',
         'created_at' => 'datetime',
@@ -62,84 +61,13 @@ class VideoFile extends Model
         ]);
 
         $cmd = $s3Client->getCommand('GetObject', [
-            'ResponseCacheControl' => 'no-store', // Prevent caching
+            'ResponseCacheControl' => 'no-store',
             'Bucket' => config('filesystems.disks.s3.bucket'),
             'Key'    => $this->s3_path
         ]);
 
         $request = $s3Client->createPresignedRequest($cmd, $expiresAt);
-        $url = (string) $request->getUri();
-
-        // Invalidate the CDN cache for the signed URL
-        $this->invalidateCdnCache($url);
-
-        return $url;
-    }
-
-    protected function invalidateCdnCache($url)
-    {
-        // Example for CloudFront
-        $cloudFrontClient = new \Aws\CloudFront\CloudFrontClient([
-            'version' => 'latest',
-            'region'  => config('filesystems.disks.cloudfront.region'),
-            'credentials' => [
-                'key'    => config('filesystems.disks.cloudfront.key'),
-                'secret' => config('filesystems.disks.cloudfront.secret'),
-            ],
-        ]);
-
-        $cloudFrontClient->createInvalidation([
-            'DistributionId' => config('filesystems.disks.cloudfront.distribution_id'),
-            'InvalidationBatch' => [
-                'Paths' => [
-                    'Quantity' => 1,
-                    'Items' => [$url],
-                ],
-                'CallerReference' => (string) time(),
-            ],
-        ]);
-        $cloudFrontClient = new \Aws\CloudFront\CloudFrontClient([
-            'version' => 'latest',
-            'region'  => config('filesystems.disks.cloudfront.region'),
-            'credentials' => [
-                'key'    => config('filesystems.disks.cloudfront.key'),
-                'secret' => config('filesystems.disks.cloudfront.secret'),
-            ],
-        ]);
-
-        $cloudFrontClient->createInvalidation([
-            'DistributionId' => config('filesystems.disks.cloudfront.distribution_id'),
-            'InvalidationBatch' => [
-                'Paths' => [
-                    'Quantity' => 1,
-                    'Items' => [$url],
-                ],
-                'CallerReference' => (string) time(),
-            ],
-        ]);
-        // This could involve making an API call to the CDN provider
-        // Example for CloudFront:
-        /*
-        $cloudFrontClient = new \Aws\CloudFront\CloudFrontClient([
-            'version' => 'latest',
-            'region'  => config('filesystems.disks.cloudfront.region'),
-            'credentials' => [
-                'key'    => config('filesystems.disks.cloudfront.key'),
-                'secret' => config('filesystems.disks.cloudfront.secret'),
-            ],
-        ]);
-
-        $cloudFrontClient->createInvalidation([
-            'DistributionId' => config('filesystems.disks.cloudfront.distribution_id'),
-            'InvalidationBatch' => [
-                'Paths' => [
-                    'Quantity' => 1,
-                    'Items' => [$url],
-                ],
-                'CallerReference' => (string) time(),
-            ],
-        ]);
-        */
+        return (string) $request->getUri();
     }
 
     public function getFileType()
