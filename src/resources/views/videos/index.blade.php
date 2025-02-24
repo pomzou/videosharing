@@ -366,7 +366,7 @@
                                                 <div id="url-{{ $video->id }}" class="space-y-2">
                                                     <div class="flex items-center gap-2">
                                                         <input type="text" id="url-input-{{ $video->id }}"
-                                                            value="{{ $video->short_url ? route('short.url.redirect', ['shortUrl' => $video->short_url]) : '' }}"
+                                                            value="{{ $video->short_url ? route('stream.video', ['shortUrl' => $video->short_url]) : '' }}"
                                                             class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                                             readonly>
                                                         <button onclick="copyUrl({{ $video->id }})"
@@ -754,9 +754,9 @@
                         ${isExpired
                             ? '<span class="text-xs text-red-500">Expired</span>'
                             : `<button onclick="revokeShareAccess(${share.id})"
-                                                                                    class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                                    Revoke Access
-                                                                                   </button>`}
+                                                                                        class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                                        Revoke Access
+                                                                                       </button>`}
                     </div>
                 </div>
             `;

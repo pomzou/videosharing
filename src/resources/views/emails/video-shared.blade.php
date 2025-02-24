@@ -84,8 +84,8 @@
         </div>
 
         <p>To access this file, use the secure download link below:</p>
-        <a href="{{ route('short.url.redirect', ['shortUrl' => $share->short_url]) }}" class="button">
-            Download File
+        <a href="{{ route('stream.video', ['shortUrl' => $share->short_url]) }}" class="button">
+            Access File
         </a>
 
         <div class="info-box mt-4">

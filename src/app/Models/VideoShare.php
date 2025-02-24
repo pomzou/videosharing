@@ -25,7 +25,7 @@ class VideoShare extends Model
     public function getActiveSharedUrlAttribute()
     {
         if ($this->short_url) {
-            return route('short.url.redirect', ['shortUrl' => $this->short_url]);
+            return route('stream.video', ['shortUrl' => $this->short_url]);
         }
         return $this->shared_url;
     }

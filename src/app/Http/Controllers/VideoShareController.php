@@ -83,7 +83,7 @@ class VideoShareController extends Controller
             // 短縮URLを生成
             $shortUrl = $this->urlShortener->generateShortUrl();
 
-            // 共有リンクを作成（両方のURLを設定）
+            // 共有リンクを作成
             $share = $videoFile->shares()->create([
                 'email' => $request->email,
                 'access_token' => Str::random(32),
@@ -94,18 +94,23 @@ class VideoShareController extends Controller
                 'short_url' => $shortUrl
             ]);
 
-            // データベースの変更を確定
             DB::commit();
 
             // 共有情報を最新の状態に更新
             $share->refresh();
 
+            // メール送信時に使用するURLを生成
+            $streamUrl = route('stream.video', ['shortUrl' => $share->short_url]);
+
             // メール送信
             try {
-                Log::info('Sending share email', [
+                $streamUrl = route('stream.video', ['shortUrl' => $share->short_url]);
+
+                Log::info('Sending email with stream URL', [
                     'share_id' => $share->id,
                     'email' => $request->email,
-                    'short_url' => $share->short_url
+                    'short_url' => $share->short_url,
+                    'stream_url' => $streamUrl
                 ]);
 
                 Mail::to($request->email)->send(new VideoShared($share));
@@ -137,8 +142,7 @@ class VideoShareController extends Controller
             DB::rollBack();
             Log::error('Failed to share video', [
                 'video_id' => $videoFile->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([

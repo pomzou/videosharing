@@ -185,34 +185,29 @@ class VideoFileController extends Controller
             $expiresAtUtc = $expiresAt->setTimezone(new \DateTimeZone('UTC'));
             $expiresAtTokyo = $expiresAtUtc->setTimezone(new \DateTimeZone('Asia/Tokyo'));
 
-            // 短縮URLを生成して保存（この時点では短縮コードのみ保存）
-            $this->urlShortener->shortenVideoFileUrl($videoFile, $signedUrl);
+            // 短縮URLを生成
+            $shortUrl = $this->urlShortener->generateShortUrl();
 
             // データベースの更新
             $videoFile->update([
                 'url_expires_at' => $expiresAtTokyo,
-                'current_signed_url' => $signedUrl
+                'current_signed_url' => $signedUrl,
+                'short_url' => $shortUrl
             ]);
 
             // 最新の情報で更新
             $videoFile->refresh();
 
-            // short_urlが正しく設定されているか確認
-            if (!$videoFile->short_url) {
-                throw new \Exception('Failed to generate short URL');
-            }
-
-            // 完全なURLを生成（アプリケーションのドメインを含む）
-            $fullShortUrl = route('short.url.redirect', ['shortUrl' => $videoFile->short_url]);
+            // ストリーミングURLを生成
+            $streamUrl = route('stream.video', ['shortUrl' => $shortUrl]);
 
             return response()->json([
                 'message' => 'URL generated successfully',
-                'url' => $fullShortUrl,
-                'original_url' => $signedUrl, // デバッグ用（実際の運用では削除推奨）
+                'url' => $streamUrl,
                 'expires_at' => $expiresAtTokyo->format('c'),
                 'download_section' => view('videos.partials.download-section', [
                     'video' => $videoFile,
-                    'shortUrl' => $fullShortUrl
+                    'streamUrl' => $streamUrl
                 ])->render()
             ]);
         } catch (\Exception $e) {

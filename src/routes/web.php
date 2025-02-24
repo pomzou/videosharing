@@ -4,7 +4,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\VideoFileController;
 use App\Http\Controllers\VideoShareController;
-use App\Http\Controllers\ShortUrlRedirectController;
+use App\Http\Controllers\StreamController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -14,9 +14,8 @@ Route::get('/', function () {
 Route::get('/shared/{token}', [VideoShareController::class, 'accessVideo'])
     ->name('videos.shared');
 
-// 短縮URL用の公開ルート
-Route::get('/s/{shortUrl}', [ShortUrlRedirectController::class, 'redirect'])
-    ->name('short.url.redirect');
+Route::get('/stream/{shortUrl}', [StreamController::class, 'stream'])
+    ->name('stream.video');
 
 // 認証が必要なルートグループ
 Route::middleware(['auth', 'verified'])->group(function () {
