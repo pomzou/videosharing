@@ -17,15 +17,18 @@ class VideoFile extends Model
         'original_name',
         'mime_type',
         'file_size',
+        'is_active',
         's3_path',
         'current_signed_url',
-        'url_expires_at'
+        'url_expires_at',
+        'short_url'  // これが追加されていることを確認
     ];
 
     protected $casts = [
         'url_expires_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'is_active' => 'boolean',
         'deleted_at' => 'datetime'
     ];
 

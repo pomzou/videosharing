@@ -11,32 +11,27 @@ class VideoShared extends Mailable
 {
     use Queueable, SerializesModels;
 
+    /**
+     * The share instance.
+     *
+     * @var VideoShare
+     */
     public $share;
-    protected $signedUrl;
 
     /**
      * Create a new message instance.
-     *
-     * @return void
      */
-    public function __construct(VideoShare $share, string $signedUrl)
+    public function __construct(VideoShare $share)
     {
         $this->share = $share;
-        $this->signedUrl = $signedUrl;
     }
 
     /**
      * Build the message.
-     *
-     * @return $this
      */
     public function build()
     {
-        return $this->subject('Your video has been shared')
-            ->view('emails.video-shared')
-            ->with([
-                'share' => $this->share,
-                'signedUrl' => $this->signedUrl
-            ]);
+        return $this->subject('ファイルが共有されました')
+            ->view('emails.video-shared');
     }
 }

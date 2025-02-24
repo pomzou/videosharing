@@ -13,12 +13,21 @@ class VideoShare extends Model
         'expires_at',
         'is_active',
         'share_type',
-        'shared_url' // Added shared_url to fillable
+        'shared_url',
+        'short_url'
     ];
 
-    public function getActiveSharedUrlAttribute() // Added accessor for active_shared_url
+    /**
+     * アクティブな共有URLを取得
+     * 短縮URLが存在する場合はそれを返し、
+     * 存在しない場合は元のURLを返す
+     */
+    public function getActiveSharedUrlAttribute()
     {
-        return $this->shared_url; // Assuming shared_url is the source for active_shared_url
+        if ($this->short_url) {
+            return route('short.url.redirect', ['shortUrl' => $this->short_url]);
+        }
+        return $this->shared_url;
     }
 
     protected $casts = [

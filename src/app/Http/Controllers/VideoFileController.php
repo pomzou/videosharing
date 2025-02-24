@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\VideoFile;
+use App\Services\UrlShortenerService; // 追加
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -12,6 +13,13 @@ use Illuminate\Support\Facades\DB;
 
 class VideoFileController extends Controller
 {
+    private $urlShortener;
+
+    public function __construct(UrlShortenerService $urlShortener)
+    {
+        $this->urlShortener = $urlShortener;
+    }
+
     public function create()
     {
         return view('videos.create');
@@ -177,30 +185,48 @@ class VideoFileController extends Controller
             $expiresAtUtc = $expiresAt->setTimezone(new \DateTimeZone('UTC'));
             $expiresAtTokyo = $expiresAtUtc->setTimezone(new \DateTimeZone('Asia/Tokyo'));
 
+            // 短縮URLを生成して保存（この時点では短縮コードのみ保存）
+            $this->urlShortener->shortenVideoFileUrl($videoFile, $signedUrl);
+
+            // データベースの更新
             $videoFile->update([
                 'url_expires_at' => $expiresAtTokyo,
                 'current_signed_url' => $signedUrl
             ]);
 
-            // ビデオの最新情報を取得
+            // 最新の情報で更新
             $videoFile->refresh();
+
+            // short_urlが正しく設定されているか確認
+            if (!$videoFile->short_url) {
+                throw new \Exception('Failed to generate short URL');
+            }
+
+            // 完全なURLを生成（アプリケーションのドメインを含む）
+            $fullShortUrl = route('short.url.redirect', ['shortUrl' => $videoFile->short_url]);
 
             return response()->json([
                 'message' => 'URL generated successfully',
-                'url' => $signedUrl,
+                'url' => $fullShortUrl,
+                'original_url' => $signedUrl, // デバッグ用（実際の運用では削除推奨）
                 'expires_at' => $expiresAtTokyo->format('c'),
-                'download_section' => view('videos.partials.download-section', ['video' => $videoFile])->render()
+                'download_section' => view('videos.partials.download-section', [
+                    'video' => $videoFile,
+                    'shortUrl' => $fullShortUrl
+                ])->render()
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to generate signed URL', [
                 'video_id' => $videoFile->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return response()->json([
                 'error' => $e->getMessage()
             ], 500);
         }
     }
+
 
     public function index()
     {

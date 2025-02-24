@@ -84,7 +84,7 @@
         </div>
 
         <p>To access this file, use the secure download link below:</p>
-        <a href="{{ $share->active_shared_url }}" class="button">
+        <a href="{{ route('short.url.redirect', ['shortUrl' => $share->short_url]) }}" class="button">
             Download File
         </a>
 

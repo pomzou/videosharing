@@ -366,7 +366,7 @@
                                                 <div id="url-{{ $video->id }}" class="space-y-2">
                                                     <div class="flex items-center gap-2">
                                                         <input type="text" id="url-input-{{ $video->id }}"
-                                                            value="{{ $video->current_signed_url ?? '' }}"
+                                                            value="{{ $video->short_url ? route('short.url.redirect', ['shortUrl' => $video->short_url]) : '' }}"
                                                             class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                                             readonly>
                                                         <button onclick="copyUrl({{ $video->id }})"
@@ -754,9 +754,9 @@
                         ${isExpired
                             ? '<span class="text-xs text-red-500">Expired</span>'
                             : `<button onclick="revokeShareAccess(${share.id})"
-                                                                    class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                    Revoke Access
-                                                                   </button>`}
+                                                                                    class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                                    Revoke Access
+                                                                                   </button>`}
                     </div>
                 </div>
             `;
@@ -775,37 +775,76 @@
 
         // URL表示の更新
         function updateURLSection(videoId, data) {
-            // まず、Download Link Section 全体のコンテナを探す
-            const section = document.querySelector(`.space-y-3`);
-            if (!section) return;
+            const urlDiv = document.getElementById(`url-${videoId}`);
+            const urlInput = document.getElementById(`url-input-${videoId}`);
+            const timerDiv = document.getElementById(`timer-${videoId}`);
+            const generateBtn = document.getElementById(`generate-btn-${videoId}`);
 
-            if (data.url && data.expires_at) {
-                section.innerHTML = `
-            <div id="timer-${videoId}" class="text-sm text-gray-600">
-                <div class="flex justify-between items-center">
-                    <p>Time remaining: <span class="text-indigo-600 font-medium"></span></p>
-                    <button onclick="revokeAccess(${videoId})"
-                        class="px-3 py-1 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 focus:outline-none">
-                        Revoke URL
-                    </button>
-                </div>
-            </div>
-            <div id="url-${videoId}" class="space-y-2">
-                <div class="flex items-center gap-2">
-                    <input type="text" id="url-input-${videoId}"
-                        value="${data.url}"
-                        class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        readonly>
-                    <button onclick="copyUrl(${videoId})"
-                        class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                        Copy
-                    </button>
-                </div>
-            </div>
-        `;
+            if (urlInput) {
+                // 短縮URLを表示用に整形（完全なURLとして表示）
+                const shortUrl = data.url; // このURLは既にroute()関数で生成された完全なURL
+                urlInput.value = shortUrl;
+            }
 
-                // タイマーを初期化
+            if (urlDiv) urlDiv.classList.remove('hidden');
+            if (generateBtn) generateBtn.classList.add('hidden');
+            if (timerDiv) {
+                timerDiv.classList.remove('hidden');
                 initializeTimer(videoId, new Date(data.expires_at).getTime());
+            }
+        }
+
+        function copyUrl(videoId) {
+            const urlInput = document.getElementById(`url-input-${videoId}`);
+            if (urlInput) {
+                urlInput.select();
+                document.execCommand('copy');
+                showNotification('URLをコピーしました', 'success');
+            }
+        }
+
+        async function executeShare(videoId) {
+            const email = document.getElementById(`email-${videoId}`).value;
+            const expiresAt = document.getElementById(`expires-${videoId}`).value;
+
+            try {
+                const response = await fetch(`/videos/${videoId}/share`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email,
+                        expires_at: expiresAt,
+                        confirmed: true
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || data.message || 'Failed to share video');
+                }
+
+                showNotification(`Video shared successfully. An email has been sent to ${email}`, 'success');
+                closeShareModal(videoId);
+
+                // 共有リストを更新
+                updateShareList(videoId, data.shares);
+                updateShareCount(videoId, data.shares.length);
+
+                // フォームをリセット
+                document.getElementById(`email-${videoId}`).value = '';
+                document.getElementById(`expires-${videoId}`).value = '';
+
+                document.getElementById(`share-form-${videoId}`).classList.remove('hidden');
+                document.getElementById(`share-confirm-${videoId}`).classList.add('hidden');
+
+            } catch (error) {
+                console.error('Share error:', error);
+                showNotification(error.message, 'error');
             }
         }
 
