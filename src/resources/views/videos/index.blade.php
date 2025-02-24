@@ -509,44 +509,83 @@
         });
         // URL生成関連の関数
         function updateURLDisplay(videoId, url, expiresAt) {
+            console.log('Updating URL display:', {
+                videoId,
+                url,
+                expiresAt
+            });
+
             const urlDiv = document.getElementById(`url-${videoId}`);
             const urlInput = document.getElementById(`url-input-${videoId}`);
             const timerDiv = document.getElementById(`timer-${videoId}`);
             const generateBtn = document.getElementById(`generate-btn-${videoId}`);
 
-            if (urlInput) urlInput.value = url;
-            if (urlDiv) urlDiv.classList.remove('hidden');
-            if (generateBtn) generateBtn.classList.add('hidden');
+            if (urlInput) {
+                urlInput.value = url;
+                console.log('URL input updated');
+            }
+
+            if (urlDiv) {
+                urlDiv.classList.remove('hidden');
+                console.log('URL div revealed');
+            }
+
+            if (generateBtn) {
+                generateBtn.classList.add('hidden');
+                console.log('Generate button hidden');
+            }
+
             if (timerDiv) {
                 timerDiv.classList.remove('hidden');
+                console.log('Timer div revealed');
+
                 const expiryTime = new Date(expiresAt).getTime();
-                updateTimer(videoId, expiryTime);
+                // initializeTimerとupdateTimer両方を呼び出して確実に動作させる
+                if (typeof initializeTimer === 'function') {
+                    initializeTimer(videoId, expiryTime);
+                }
+                if (typeof updateTimer === 'function') {
+                    updateTimer(videoId, expiryTime);
+                }
+                console.log('Timer initialized with expiry:', new Date(expiryTime).toLocaleString());
             }
         }
 
+        // プリセット時間でのURL生成
         async function generateWithPreset(videoId, hours) {
-            const expiryDate = new Date();
-            expiryDate.setHours(expiryDate.getHours() + hours);
-            await generateSignedUrlWithExpiry(videoId, expiryDate.toISOString());
+            try {
+                const expiryDate = new Date();
+                expiryDate.setHours(expiryDate.getHours() + hours);
+                await generateSignedUrlWithExpiry(videoId, expiryDate.toISOString());
+            } catch (error) {
+                console.error('プリセットURL生成エラー:', error);
+                showNotification('Failed to generate URL with preset time', 'error');
+            }
         }
 
+        // カスタム時間でのURL生成
         async function generateWithCustom(videoId) {
-            const customExpiry = document.getElementById(`custom-expiry-${videoId}`).value;
-            if (!customExpiry) {
-                showNotification('Please select a custom expiry time', 'error');
-                return;
+            try {
+                const customExpiry = document.getElementById(`custom-expiry-${videoId}`).value;
+                if (!customExpiry) {
+                    showNotification('Please select a custom expiry time', 'error');
+                    return;
+                }
+
+                const expiryDate = new Date(customExpiry);
+                const now = new Date();
+                const hoursDiff = (expiryDate - now) / (1000 * 60 * 60);
+
+                if (hoursDiff > 168) {
+                    showNotification('The expiry time cannot exceed 7 days', 'error');
+                    return;
+                }
+
+                await generateSignedUrlWithExpiry(videoId, customExpiry);
+            } catch (error) {
+                console.error('カスタムURL生成エラー:', error);
+                showNotification('Failed to generate URL with custom time', 'error');
             }
-
-            const expiryDate = new Date(customExpiry);
-            const now = new Date();
-            const hoursDiff = (expiryDate - now) / (1000 * 60 * 60);
-
-            if (hoursDiff > 168) {
-                showNotification('The expiry time cannot exceed 7 days', 'error');
-                return;
-            }
-
-            await generateSignedUrlWithExpiry(videoId, customExpiry);
         }
 
         async function confirmShare(event, videoId) {
@@ -754,9 +793,9 @@
                         ${isExpired
                             ? '<span class="text-xs text-red-500">Expired</span>'
                             : `<button onclick="revokeShareAccess(${share.id})"
-                                                                                        class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                                        Revoke Access
-                                                                                       </button>`}
+                                                                                                                                        class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                                                                                        Revoke Access
+                                                                                                                                       </button>`}
                     </div>
                 </div>
             `;
@@ -894,38 +933,6 @@
             }
         }
 
-        // URL生成関数
-        async function generateSignedUrlWithExpiry(videoId, expiryTime) {
-            try {
-                const response = await fetch(`/videos/${videoId}/signed-url`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        expires_at: expiryTime
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to generate download link');
-                }
-
-                if (data.url) {
-                    closeExpiryModal(videoId);
-                    updateURLSection(videoId, data);
-                    showNotification('Download link generated successfully', 'success');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showNotification(error.message, 'error');
-            }
-        }
-
         // 動画削除
         async function deleteVideo(videoId) {
             try {
@@ -958,6 +965,50 @@
             } catch (error) {
                 console.error('Delete error:', error);
                 showNotification('Failed to delete file', 'error');
+            }
+        }
+
+        async function generateSignedUrlWithExpiry(videoId, expiryTime) {
+            showNotification('URLを生成中...', 'info');
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+                // リクエストを送信
+                const response = await fetch(`/videos/${videoId}/signed-url`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        expires_at: expiryTime
+                    })
+                });
+
+                // レスポンスをJSONとしてパース
+                const jsonResponse = await response.json();
+
+                console.log('サーバーからのレスポンス:', jsonResponse);
+
+                // エラーチェック
+                if (!response.ok) {
+                    throw new Error(jsonResponse.error || 'ダウンロードリンクの生成に失敗しました');
+                }
+
+                // モーダルを閉じる
+                closeExpiryModal(videoId);
+
+                // ページを更新して新しい状態を表示
+                // Ajax処理がうまくいかない場合の単純な解決策
+                window.location.reload();
+
+                showNotification('ダウンロードリンクが生成されました', 'success');
+
+            } catch (error) {
+                console.error('URL生成中にエラーが発生しました:', error);
+                showNotification(`エラー: ${error.message || 'URL生成に失敗しました'}`, 'error');
             }
         }
     </script>
