@@ -49,6 +49,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('shares.revoke');
     Route::get('/shares/{videoFile}', [VideoShareController::class, 'listShares'])
         ->name('shares.list');
+
+    Route::post('/videos/{videoFile}/share/confirm', [VideoShareController::class, 'confirmShare'])
+        ->name('videos.share.confirm');
+    Route::post('/videos/{videoFile}/share', [VideoShareController::class, 'share'])
+        ->name('videos.share');
+    Route::delete('/shares/{share}/delete', [VideoShareController::class, 'deleteShare'])
+        ->name('shares.delete');
+    Route::post('/shares/{share}/extend', [VideoShareController::class, 'extendShare'])
+        ->name('shares.extend');
+    Route::delete('/shares/{share}', [VideoShareController::class, 'revokeAccess'])
+        ->name('shares.revoke');
+    Route::get('/shares/{videoFile}', [VideoShareController::class, 'listShares'])
+        ->name('shares.list');
 });
 
 require __DIR__ . '/auth.php';

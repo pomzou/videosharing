@@ -184,16 +184,53 @@
                                                                         id="email-{{ $video->id }}" required
                                                                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                                                 </div>
+
                                                                 <div class="mt-4">
                                                                     <label for="expires-{{ $video->id }}"
-                                                                        class="block text-sm font-medium text-gray-700">Expires
-                                                                        At</label>
-                                                                    <input type="datetime-local"
-                                                                        id="expires-{{ $video->id }}" required
-                                                                        min="{{ now()->format('Y-m-d\TH:i') }}" //
-                                                                        過去の日付を選択できないように
-                                                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                                        class="block text-sm font-medium text-gray-700">Select
+                                                                        Expiry Time</label>
+
+                                                                    <!-- Preset buttons -->
+                                                                    <div class="grid grid-cols-2 gap-2 mt-2">
+                                                                        <button type="button"
+                                                                            onclick="setExpiryPreset({{ $video->id }}, 3)"
+                                                                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                            3 Hours
+                                                                        </button>
+                                                                        <button type="button"
+                                                                            onclick="setExpiryPreset({{ $video->id }}, 12)"
+                                                                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                            12 Hours
+                                                                        </button>
+                                                                        <button type="button"
+                                                                            onclick="setExpiryPreset({{ $video->id }}, 24)"
+                                                                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                            1 Day
+                                                                        </button>
+                                                                        <button type="button"
+                                                                            onclick="setExpiryPreset({{ $video->id }}, 168)"
+                                                                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                            7 Days
+                                                                        </button>
+                                                                    </div>
+
+                                                                    <!-- Custom date picker -->
+                                                                    <div class="mt-3">
+                                                                        <label
+                                                                            class="block text-sm font-medium text-gray-700">Custom
+                                                                            Expiry Time</label>
+                                                                        <input type="datetime-local"
+                                                                            id="expires-{{ $video->id }}" required
+                                                                            min="{{ now()->format('Y-m-d\TH:i') }}"
+                                                                            max="{{ now()->addDays(7)->format('Y-m-d\TH:i') }}"
+                                                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                                        <p class="mt-1 text-sm text-gray-500">
+                                                                            Note: Maximum allowed duration is 7 days.
+                                                                        </p>
+
+                                                                    </div>
                                                                 </div>
+
                                                                 <div class="mt-4 flex justify-end space-x-3">
                                                                     <button type="button"
                                                                         onclick="closeShareModal({{ $video->id }})"
@@ -285,24 +322,73 @@
                                             <div id="shares-list-{{ $video->id }}" class="mt-2 space-y-2 hidden">
                                                 @foreach ($video->shares->sortByDesc('created_at') as $share)
                                                     @if ($share->isEmailShare())
-                                                        <div class="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                                                        <div class="flex items-center p-3 bg-gray-50 rounded-md border border-gray-200 hover:bg-gray-100 transition-colors"
                                                             data-share-id="{{ $share->id }}">
-                                                            <div>
+                                                            <!-- 削除ボタン -->
+                                                            <button
+                                                                onclick="deleteShare({{ $share->id }}, {{ $video->id }})"
+                                                                class="text-gray-400 hover:text-red-500 focus:outline-none mr-2"
+                                                                title="Remove from list">
+                                                                <svg class="w-4 h-4" fill="none"
+                                                                    stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round"
+                                                                        stroke-linejoin="round" stroke-width="2"
+                                                                        d="M6 18L18 6M6 6l12 12" />
+                                                                </svg>
+                                                            </button>
+
+                                                            <!-- メールとステータス情報 -->
+                                                            <div class="flex-grow flex items-center">
                                                                 <span
-                                                                    class="text-sm text-gray-600">{{ $share->email }}</span>
-                                                                <span class="text-xs text-gray-500 ml-2">
-                                                                    Expires:
-                                                                    {{ $share->expires_at->format('Y-m-d H:i') }}
-                                                                </span>
-                                                            </div>
-                                                            <div class="flex items-center">
+                                                                    class="text-sm text-gray-800 font-medium mr-2">{{ $share->email }}</span>
                                                                 @if (!$share->is_active || $share->isExpired())
-                                                                    <span class="text-xs text-red-500">Expired</span>
+                                                                    <span
+                                                                        class="text-xs text-red-500 font-medium whitespace-nowrap">
+                                                                        Expired:
+                                                                        {{ $share->expires_at->format('Y-m-d H:i') }}
+                                                                    </span>
+                                                                @else
+                                                                    <span
+                                                                        class="text-xs text-gray-500 whitespace-nowrap">
+                                                                        Expires:
+                                                                        {{ $share->expires_at->format('Y-m-d H:i') }}
+                                                                    </span>
+                                                                @endif
+                                                            </div>
+
+                                                            <!-- アクションボタン -->
+                                                            <div class="ml-3">
+                                                                @if (!$share->is_active || $share->isExpired())
+                                                                    <button
+                                                                        onclick="extendShareExpiry({{ $share->id }}, {{ $video->id }})"
+                                                                        class="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 focus:outline-none whitespace-nowrap">
+                                                                        <span class="flex items-center">
+                                                                            <svg class="w-3 h-3 mr-1" fill="none"
+                                                                                stroke="currentColor"
+                                                                                viewBox="0 0 24 24">
+                                                                                <path stroke-linecap="round"
+                                                                                    stroke-linejoin="round"
+                                                                                    stroke-width="2"
+                                                                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                            </svg>
+                                                                            Extend
+                                                                        </span>
+                                                                    </button>
                                                                 @else
                                                                     <button
-                                                                        onclick="revokeShareAccess({{ $share->id }})"
-                                                                        class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                        Revoke Access
+                                                                        onclick="revokeShareAccess({{ $share->id }}, {{ $video->id }})"
+                                                                        class="px-3 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 focus:outline-none whitespace-nowrap">
+                                                                        <span class="flex items-center">
+                                                                            <svg class="w-3 h-3 mr-1" fill="none"
+                                                                                stroke="currentColor"
+                                                                                viewBox="0 0 24 24">
+                                                                                <path stroke-linecap="round"
+                                                                                    stroke-linejoin="round"
+                                                                                    stroke-width="2"
+                                                                                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                                                            </svg>
+                                                                            Revoke
+                                                                        </span>
                                                                     </button>
                                                                 @endif
                                                             </div>
@@ -327,7 +413,8 @@
                                                                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                                         </svg>
                                                     </div>
-                                                    <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">Delete
+                                                    <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">
+                                                        Delete
                                                         File</h3>
                                                     <div class="mt-2 px-7 py-3">
                                                         <p class="text-sm text-gray-500">
@@ -427,9 +514,7 @@
                                                                 min="{{ now()->format('Y-m-d\TH:i') }}"
                                                                 max="{{ now()->addDays(7)->format('Y-m-d\TH:i') }}">
                                                             <p class="mt-1 text-sm text-gray-500">
-                                                                Note: Maximum allowed duration is 7 days. For durations
-                                                                over 12 hours, additional authentication will be
-                                                                required.
+                                                                Note: Maximum allowed duration is 7 days.
                                                             </p>
                                                             <button onclick="generateWithCustom({{ $video->id }})"
                                                                 class="mt-2 w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
@@ -509,83 +594,44 @@
         });
         // URL生成関連の関数
         function updateURLDisplay(videoId, url, expiresAt) {
-            console.log('Updating URL display:', {
-                videoId,
-                url,
-                expiresAt
-            });
-
             const urlDiv = document.getElementById(`url-${videoId}`);
             const urlInput = document.getElementById(`url-input-${videoId}`);
             const timerDiv = document.getElementById(`timer-${videoId}`);
             const generateBtn = document.getElementById(`generate-btn-${videoId}`);
 
-            if (urlInput) {
-                urlInput.value = url;
-                console.log('URL input updated');
-            }
-
-            if (urlDiv) {
-                urlDiv.classList.remove('hidden');
-                console.log('URL div revealed');
-            }
-
-            if (generateBtn) {
-                generateBtn.classList.add('hidden');
-                console.log('Generate button hidden');
-            }
-
+            if (urlInput) urlInput.value = url;
+            if (urlDiv) urlDiv.classList.remove('hidden');
+            if (generateBtn) generateBtn.classList.add('hidden');
             if (timerDiv) {
                 timerDiv.classList.remove('hidden');
-                console.log('Timer div revealed');
-
                 const expiryTime = new Date(expiresAt).getTime();
-                // initializeTimerとupdateTimer両方を呼び出して確実に動作させる
-                if (typeof initializeTimer === 'function') {
-                    initializeTimer(videoId, expiryTime);
-                }
-                if (typeof updateTimer === 'function') {
-                    updateTimer(videoId, expiryTime);
-                }
-                console.log('Timer initialized with expiry:', new Date(expiryTime).toLocaleString());
+                updateTimer(videoId, expiryTime);
             }
         }
 
-        // プリセット時間でのURL生成
         async function generateWithPreset(videoId, hours) {
-            try {
-                const expiryDate = new Date();
-                expiryDate.setHours(expiryDate.getHours() + hours);
-                await generateSignedUrlWithExpiry(videoId, expiryDate.toISOString());
-            } catch (error) {
-                console.error('プリセットURL生成エラー:', error);
-                showNotification('Failed to generate URL with preset time', 'error');
-            }
+            const expiryDate = new Date();
+            expiryDate.setHours(expiryDate.getHours() + hours);
+            await generateSignedUrlWithExpiry(videoId, expiryDate.toISOString());
         }
 
-        // カスタム時間でのURL生成
         async function generateWithCustom(videoId) {
-            try {
-                const customExpiry = document.getElementById(`custom-expiry-${videoId}`).value;
-                if (!customExpiry) {
-                    showNotification('Please select a custom expiry time', 'error');
-                    return;
-                }
-
-                const expiryDate = new Date(customExpiry);
-                const now = new Date();
-                const hoursDiff = (expiryDate - now) / (1000 * 60 * 60);
-
-                if (hoursDiff > 168) {
-                    showNotification('The expiry time cannot exceed 7 days', 'error');
-                    return;
-                }
-
-                await generateSignedUrlWithExpiry(videoId, customExpiry);
-            } catch (error) {
-                console.error('カスタムURL生成エラー:', error);
-                showNotification('Failed to generate URL with custom time', 'error');
+            const customExpiry = document.getElementById(`custom-expiry-${videoId}`).value;
+            if (!customExpiry) {
+                showNotification('Please select a custom expiry time', 'error');
+                return;
             }
+
+            const expiryDate = new Date(customExpiry);
+            const now = new Date();
+            const hoursDiff = (expiryDate - now) / (1000 * 60 * 60);
+
+            if (hoursDiff > 168) {
+                showNotification('The expiry time cannot exceed 7 days', 'error');
+                return;
+            }
+
+            await generateSignedUrlWithExpiry(videoId, customExpiry);
         }
 
         async function confirmShare(event, videoId) {
@@ -737,7 +783,7 @@
             }
         }
 
-        async function revokeShareAccess(shareId) {
+        async function revokeShareAccess(shareId, videoId) {
             if (!confirm('Are you sure you want to revoke access?')) {
                 return;
             }
@@ -758,9 +804,36 @@
 
                 const shareElement = document.querySelector(`[data-share-id="${shareId}"]`);
                 if (shareElement) {
-                    const actionDiv = shareElement.querySelector('.flex.items-center');
+                    // 状態テキストを取得
+                    const statusSpan = shareElement.querySelector('.flex-grow.flex.items-center .text-xs');
+                    if (statusSpan) {
+                        // Expiredに変更
+                        statusSpan.className = 'text-xs text-red-500 font-medium whitespace-nowrap';
+                        statusSpan.textContent = `Expired: ${new Date().toLocaleString('ja-JP', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }).replace(/\//g, '-')}`;
+                    }
+
+                    // アクションボタンのコンテナを取得
+                    const actionDiv = shareElement.querySelector('div.ml-3');
                     if (actionDiv) {
-                        actionDiv.innerHTML = '<span class="text-xs text-red-500">Expired</span>';
+                        // RevokeボタンをExtendボタンに置き換え
+                        actionDiv.innerHTML = `
+                    <button onclick="extendShareExpiry(${shareId}, ${videoId})"
+                        class="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 focus:outline-none whitespace-nowrap">
+                        <span class="flex items-center">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Extend
+                        </span>
+                    </button>
+                `;
                     }
                 }
 
@@ -793,9 +866,9 @@
                         ${isExpired
                             ? '<span class="text-xs text-red-500">Expired</span>'
                             : `<button onclick="revokeShareAccess(${share.id})"
-                                                                                                                                        class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                                                                                        Revoke Access
-                                                                                                                                       </button>`}
+                                                                                                                                                                                                                                        class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                                                                                                                                                                                        Revoke Access
+                                                                                                                                                                                                                                       </button>`}
                     </div>
                 </div>
             `;
@@ -933,6 +1006,38 @@
             }
         }
 
+        // URL生成関数
+        async function generateSignedUrlWithExpiry(videoId, expiryTime) {
+            try {
+                const response = await fetch(`/videos/${videoId}/signed-url`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        expires_at: expiryTime
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to generate download link');
+                }
+
+                if (data.url) {
+                    closeExpiryModal(videoId);
+                    updateURLSection(videoId, data);
+                    showNotification('Download link generated successfully', 'success');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification(error.message, 'error');
+            }
+        }
+
         // 動画削除
         async function deleteVideo(videoId) {
             try {
@@ -968,48 +1073,213 @@
             }
         }
 
-        async function generateSignedUrlWithExpiry(videoId, expiryTime) {
-            showNotification('URLを生成中...', 'info');
+        // シェアを延長する関数
+        async function extendShareExpiry(shareId, videoId) {
+            // モーダルを作成して期限選択UIを表示
+            const modalId = `extend-share-modal-${shareId}`;
 
+            // 既存のモーダルがあれば削除
+            let existingModal = document.getElementById(modalId);
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // モーダルを作成
+            const modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50';
+            modal.innerHTML = `
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg font-medium text-gray-900">Extend Share Expiration</h3>
+                <div class="mt-4 space-y-3">
+                    <!-- Preset buttons -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="confirmExtendShare(${shareId}, ${videoId}, 24)"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                            1 Day
+                        </button>
+                        <button onclick="confirmExtendShare(${shareId}, ${videoId}, 72)"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                            3 Days
+                        </button>
+                        <button onclick="confirmExtendShare(${shareId}, ${videoId}, 168)"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                            7 Days
+                        </button>
+                        <button onclick="confirmExtendShare(${shareId}, ${videoId}, 720)"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                            30 Days
+                        </button>
+                    </div>
+
+                    <!-- Custom date picker -->
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700">Custom Expiry Date</label>
+                        <input type="datetime-local" id="extend-custom-${shareId}"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            min="${new Date().toISOString()[0]}">
+                        <button onclick="confirmExtendShareCustom(${shareId}, ${videoId})"
+                            class="mt-2 w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
+                            Set Custom Date
+                        </button>
+                    </div>
+
+
+                    <!-- Cancel button -->
+                    <button onclick="document.getElementById('${modalId}').remove()"
+                        class="mt-4 w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+            document.body.appendChild(modal);
+        }
+
+        // プリセット時間で共有を延長
+        async function confirmExtendShare(shareId, videoId, hours) {
             try {
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+                const expiryDate = new Date();
+                expiryDate.setHours(expiryDate.getHours() + hours);
 
-                // リクエストを送信
-                const response = await fetch(`/videos/${videoId}/signed-url`, {
+                const response = await fetch(`/shares/${shareId}/extend`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({
-                        expires_at: expiryTime
+                        expires_at: expiryDate.toISOString()
                     })
                 });
 
-                // レスポンスをJSONとしてパース
-                const jsonResponse = await response.json();
-
-                console.log('サーバーからのレスポンス:', jsonResponse);
-
-                // エラーチェック
                 if (!response.ok) {
-                    throw new Error(jsonResponse.error || 'ダウンロードリンクの生成に失敗しました');
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to extend share');
                 }
 
+                const data = await response.json();
+
                 // モーダルを閉じる
-                closeExpiryModal(videoId);
+                document.getElementById(`extend-share-modal-${shareId}`).remove();
 
-                // ページを更新して新しい状態を表示
-                // Ajax処理がうまくいかない場合の単純な解決策
-                window.location.reload();
+                // シェアリストを更新
+                updateShareList(videoId, data.shares);
 
-                showNotification('ダウンロードリンクが生成されました', 'success');
-
+                showNotification('Share extended successfully', 'success');
             } catch (error) {
-                console.error('URL生成中にエラーが発生しました:', error);
-                showNotification(`エラー: ${error.message || 'URL生成に失敗しました'}`, 'error');
+                console.error('Error extending share:', error);
+                showNotification(error.message, 'error');
             }
+        }
+
+        // カスタム日時で共有を延長
+        async function confirmExtendShareCustom(shareId, videoId) {
+            const customExpiry = document.getElementById(`extend-custom-${shareId}`).value;
+
+            if (!customExpiry) {
+                showNotification('Please select a custom expiry time', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/shares/${shareId}/extend`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        expires_at: customExpiry
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to extend share');
+                }
+
+                const data = await response.json();
+
+                // モーダルを閉じる
+                document.getElementById(`extend-share-modal-${shareId}`).remove();
+
+                // シェアリストを更新
+                updateShareList(videoId, data.shares);
+
+                showNotification('Share extended successfully', 'success');
+            } catch (error) {
+                console.error('Error extending share:', error);
+                showNotification(error.message, 'error');
+            }
+        }
+
+        // シェアを削除する関数
+        async function deleteShare(shareId, videoId) {
+            if (!confirm(
+                    'Are you sure you want to delete this share? This will permanently remove it from the list.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/shares/${shareId}/delete`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to delete share');
+                }
+
+                const data = await response.json();
+
+                // 共有アイテムをDOMから削除
+                const shareElement = document.querySelector(`[data-share-id="${shareId}"]`);
+                if (shareElement) {
+                    shareElement.style.transition = 'opacity 0.3s ease-out';
+                    shareElement.style.opacity = '0';
+                    setTimeout(() => shareElement.remove(), 300);
+                }
+
+                // 共有カウントを更新
+                updateShareCount(videoId, data.shares_count);
+
+                showNotification('Share deleted successfully', 'success');
+            } catch (error) {
+                console.error('Error deleting share:', error);
+                showNotification(error.message, 'error');
+            }
+        }
+
+        // シェアモーダルでの期限プリセット設定
+        function setExpiryPreset(videoId, hours) {
+            // 現在の日時を取得
+            const now = new Date();
+
+            // 指定された時間を追加
+            const expiryTime = new Date(now.getTime() + hours * 60 * 60 * 1000);
+
+            // ISO形式の日時文字列に変換（ローカルタイムゾーン考慮）
+            const year = expiryTime.getFullYear();
+            const month = String(expiryTime.getMonth() + 1).padStart(2, '0');
+            const day = String(expiryTime.getDate()).padStart(2, '0');
+            const hours24 = String(expiryTime.getHours()).padStart(2, '0');
+            const minutes = String(expiryTime.getMinutes()).padStart(2, '0');
+
+            // datetime-local用のフォーマット
+            const formattedDate = `${year}-${month}-${day}T${hours24}:${minutes}`;
+
+            // 入力フィールドに設定
+            document.getElementById(`expires-${videoId}`).value = formattedDate;
         }
     </script>
 </x-app-layout>

@@ -10,13 +10,14 @@ use App\Http\Requests\ShareVideoRequest;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\VideoShared;
+use App\Mail\ShareExtended;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\UrlShortenerService;
+use Illuminate\Http\Request;
 
 class VideoShareController extends Controller
 {
-
     private $urlShortener;
 
     public function __construct(UrlShortenerService $urlShortener)
@@ -104,8 +105,6 @@ class VideoShareController extends Controller
 
             // メール送信
             try {
-                $streamUrl = route('stream.video', ['shortUrl' => $share->short_url]);
-
                 Log::info('Sending email with stream URL', [
                     'share_id' => $share->id,
                     'email' => $request->email,
@@ -256,5 +255,156 @@ class VideoShareController extends Controller
             });
 
         return response()->json(['shares' => $shares]);
+    }
+
+    /**
+     * 共有の有効期限を延長する
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\VideoShare  $share
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function extendShare(Request $request, VideoShare $share)
+    {
+        try {
+            // 所有者チェック
+            if ($share->videoFile->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // バリデーション
+            $request->validate([
+                'expires_at' => [
+                    'required',
+                    'date',
+                    'after:now',
+                    function ($attribute, $value, $fail) {
+                        $hours = now()->diffInHours(new \DateTime($value));
+                        if ($hours > 720) { // 30日まで
+                            $fail('The expiry time cannot exceed 30 days.');
+                        }
+                    },
+                ]
+            ]);
+
+            DB::beginTransaction();
+
+            // 有効期限を更新
+            $share->update([
+                'expires_at' => $request->expires_at,
+                'is_active' => true
+            ]);
+
+            // S3の署名付きURLを再生成
+            $signedUrl = $share->videoFile->generateSignedUrl($request->expires_at);
+
+            // 短縮URL（既存のものを維持）
+            $shortUrl = $share->short_url ?? $this->urlShortener->generateShortUrl();
+
+            // URLを更新
+            $share->update([
+                'shared_url' => $signedUrl,
+                'short_url' => $shortUrl
+            ]);
+
+            DB::commit();
+
+            // 操作ログを記録
+            Log::info('Share expiration extended', [
+                'share_id' => $share->id,
+                'video_file_id' => $share->video_file_id,
+                'new_expiry' => $request->expires_at,
+                'user_id' => Auth::id()
+            ]);
+
+            // メールで通知
+            try {
+                Mail::to($share->email)->send(new ShareExtended($share));
+            } catch (\Exception $e) {
+                Log::error('Failed to send share extension email', [
+                    'share_id' => $share->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            // 共有リストを最新の状態で取得
+            $shares = $share->videoFile->shares()
+                ->with('accessLogs')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'message' => 'Share expiration extended successfully',
+                'shares' => $shares,
+                'shares_count' => $shares->count()
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to extend share expiration', [
+                'share_id' => $share->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to extend share expiration',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 共有を完全に削除する
+     *
+     * @param  \App\Models\VideoShare  $share
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteShare(VideoShare $share)
+    {
+        try {
+            // 所有者チェック
+            if ($share->videoFile->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            DB::beginTransaction();
+
+            // アクセスログを削除
+            $share->accessLogs()->delete();
+
+            // 共有自体を削除
+            $share->delete();
+
+            DB::commit();
+
+            // 操作ログを記録
+            Log::info('Share deleted', [
+                'share_id' => $share->id,
+                'video_file_id' => $share->video_file_id,
+                'user_id' => Auth::id()
+            ]);
+
+            // 残りの共有を取得
+            $remainingShares = $share->videoFile->shares()
+                ->with('accessLogs')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'message' => 'Share deleted successfully',
+                'shares' => $remainingShares,
+                'shares_count' => $remainingShares->count()
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to delete share', [
+                'share_id' => $share->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'error' => 'Failed to delete share',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }
