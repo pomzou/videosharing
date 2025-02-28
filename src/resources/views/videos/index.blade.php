@@ -18,7 +18,7 @@
                             @foreach ($videos as $video)
                                 <div class="border rounded-lg overflow-hidden shadow-sm"
                                     data-file-id="{{ $video->id }}">
-                                    <!-- File Preview -->
+                                    <!-- video Preview -->
                                     <div class="relative pt-[56.25%] bg-gray-100 rounded-lg overflow-hidden">
                                         @switch($video->getFileType())
                                             @case('video')
@@ -112,13 +112,13 @@
                                         @endswitch
                                     </div>
 
-                                    <!-- Video Info -->
+                                    <!-- video Info -->
                                     <div class="p-4 space-y-4">
                                         <div>
                                             <h3 class="text-lg font-semibold text-gray-900">{{ $video->title }}</h3>
                                             <p class="mt-1 text-sm text-gray-600">{{ $video->description }}</p>
                                         </div>
-                                        <!-- 情報リスト -->
+                                        <!-- video card -->
                                         <div class="space-y-2">
                                             <ul class="space-y-1 text-sm text-gray-600">
                                                 <li class="flex items-center">
@@ -155,7 +155,7 @@
                                             </ul>
                                         </div>
 
-                                        <!-- Video Controls -->
+                                        <!-- file Controls -->
                                         <div class="flex justify-between items-center mt-4 space-x-2">
                                             <button onclick="openShareModal({{ $video->id }})"
                                                 class="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
@@ -866,9 +866,9 @@
                         ${isExpired
                             ? '<span class="text-xs text-red-500">Expired</span>'
                             : `<button onclick="revokeShareAccess(${share.id})"
-                                                                                                                                                                                                                                        class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                                                                                                                                                                                        Revoke Access
-                                                                                                                                                                                                                                       </button>`}
+                                                                                                                                                                                                                                            class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                                                                                                                                                                                            Revoke Access
+                                                                                                                                                                                                                                           </button>`}
                     </div>
                 </div>
             `;

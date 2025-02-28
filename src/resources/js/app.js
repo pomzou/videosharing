@@ -6,7 +6,9 @@ import VideoCard from '@/components/videos/VideoCard.vue';
 import VideoPreview from '@/components/videos/VideoPreview.vue';
 import VideoControls from '@/components/videos/VideoControls.vue';
 import ShareList from '@/components/videos/ShareList.vue';
+import ShareListItem from '/components/videos/ShareListItem.vue'
 import UrlSection from '@/components/videos/UrlSection.vue';
+import VideoInfo from  '@/components/videos/VideoInfo.vue';
 
 // モーダルコンポーネント
 import ShareModal from '@/components/videos/modals/ShareModal.vue';
@@ -23,6 +25,9 @@ app.component('video-preview', VideoPreview);
 app.component('video-controls', VideoControls);
 app.component('share-list', ShareList);
 app.component('url-section', UrlSection);
+app.component('share-list-item', ShareListItem);
+app.component('video-info', VideoInfo);
+
 app.component('share-modal', ShareModal);
 app.component('delete-modal', DeleteModal);
 app.component('expiry-modal', ExpiryModal);
