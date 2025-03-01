@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-import './bootstrap';
-import { createApp } from 'vue';
-=======
-
->>>>>>> d81a288 (vite install)
 
 // グローバルコンポーネントの登録
 import VideoCard from '@/components/videos/VideoCard.vue';
