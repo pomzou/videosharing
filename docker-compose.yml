@@ -13,6 +13,7 @@ services:
       - ./src:/var/www/html
     ports:
       - "8080:80"
+      - "5173:5173"  
     depends_on:
       - db
       - mailhog

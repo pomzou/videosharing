@@ -1,5 +1,6 @@
 <x-alert />
 <meta name="csrf-token" content="{{ csrf_token() }}">
+@vite(['resources/css/app.css', 'resources/js/app.js'])
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -18,98 +19,13 @@
                             @foreach ($videos as $video)
                                 <div class="border rounded-lg overflow-hidden shadow-sm"
                                     data-file-id="{{ $video->id }}">
-                                    <!-- video Preview -->
-                                    <div class="relative pt-[56.25%] bg-gray-100 rounded-lg overflow-hidden">
-                                        @switch($video->getFileType())
-                                            @case('video')
-                                                <video id="video-{{ $video->id }}"
-                                                    class="absolute top-0 left-0 w-full h-full object-cover" controls
-                                                    preload="metadata"
-                                                    onplay="checkExpiry(this, {{ $video->id }}, {{ $video->isOwner() ? 'true' : 'false' }})">
-                                                    @if ($video->isOwner() || $video->preview_url)
-                                                        <source src="{{ $video->preview_url }}" type="{{ $video->mime_type }}">
-                                                    @endif
-                                                </video>
-                                            @break
-
-                                            @case('image')
-                                                <img src="{{ $video->preview_url }}" alt="{{ $video->title }}"
-                                                    class="absolute top-0 left-0 w-full h-full object-contain">
-                                            @break
-
-                                            @case('audio')
-                                                <div
-                                                    class="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-800">
-                                                    <audio controls class="w-3/4">
-                                                        <source src="{{ $video->preview_url }}"
-                                                            type="{{ $video->mime_type }}">
-                                                    </audio>
-                                                </div>
-                                            @break
-
-                                            @case('pdf')
-                                                <iframe src="{{ $video->preview_url }}"
-                                                    class="absolute top-0 left-0 w-full h-full" type="application/pdf"></iframe>
-                                            @break
-
-                                            @case('text')
-                                                <div class="absolute top-0 left-0 w-full h-full overflow-auto p-4 bg-white">
-                                                    @if ($video->isOwner())
-                                                        <pre class="text-sm whitespace-pre-wrap">{{ Storage::disk('s3')->get($video->s3_path) }}</pre>
-                                                    @endif
-                                                </div>
-                                            @break
-
-                                            @default
-                                                <div
-                                                    class="absolute top-0 left-0 w-full h-full flex items-center justify-center">
-                                                    <div class="text-center">
-                                                        <div class="flex justify-center mb-4">
-                                                            @switch($video->getFileType())
-                                                                @case('document')
-                                                                    <svg class="w-16 h-16 text-gray-400" fill="none"
-                                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                                            stroke-width="2"
-                                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                                    </svg>
-                                                                @break
-
-                                                                @case('spreadsheet')
-                                                                    <svg class="w-16 h-16 text-gray-400" fill="none"
-                                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                                            stroke-width="2"
-                                                                            d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                    </svg>
-                                                                @break
-
-                                                                @case('archive')
-                                                                    <svg class="w-16 h-16 text-gray-400" fill="none"
-                                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                                            stroke-width="2"
-                                                                            d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                                                                    </svg>
-                                                                @break
-
-                                                                @default
-                                                                    <svg class="w-16 h-16 text-gray-400" fill="none"
-                                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                                            stroke-width="2"
-                                                                            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                                                    </svg>
-                                                            @endswitch
-                                                        </div>
-                                                        <p class="text-gray-500">
-                                                            {{ strtoupper(pathinfo($video->original_name, PATHINFO_EXTENSION)) }}
-                                                            File</p>
-                                                        <p class="text-sm text-gray-400">
-                                                            {{ number_format($video->file_size / 1024 / 1024, 2) }} MB</p>
-                                                    </div>
-                                                </div>
-                                        @endswitch
+                                    <div id="app">
+                                        <video-preview :video="{{ json_encode($video) }}"
+                                            :preview-url="{{ json_encode($video->preview_url ?? '') }}"
+                                            :mime-type="{{ json_encode($video->mime_type ?? '') }}"
+                                            :is-owner="{{ json_encode(auth()->id() === $video->user_id) }}"
+                                            :video-id="{{ $video->id }}">
+                                        </video-preview>
                                     </div>
 
                                     <!-- video Info -->
@@ -866,9 +782,9 @@
                         ${isExpired
                             ? '<span class="text-xs text-red-500">Expired</span>'
                             : `<button onclick="revokeShareAccess(${share.id})"
-                                                                                                                                                                                                                                            class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                                                                                                                                                                                            Revoke Access
-                                                                                                                                                                                                                                           </button>`}
+                                                                                                                                                                                                                                                        class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                                                                                                                                                                                                        Revoke Access
+                                                                                                                                                                                                                                                       </button>`}
                     </div>
                 </div>
             `;
