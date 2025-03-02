@@ -9,449 +9,420 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 bg-white border-b border-gray-200">
-                    @if ($videos->isEmpty())
-                        <p class="text-gray-500">No videos uploaded yet.</p>
-                    @else
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            @foreach ($videos as $video)
-                                <div class="border rounded-lg overflow-hidden shadow-sm"
-                                    data-file-id="{{ $video->id }}">
-                                    <div id="app">
+        <div id="app">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6 bg-white border-b border-gray-200">
+                        @if ($videos->isEmpty())
+                            <p class="text-gray-500">No videos uploaded yet.</p>
+                        @else
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                @foreach ($videos as $video)
+                                    <div class="border rounded-lg overflow-hidden shadow-sm"
+                                        data-file-id="{{ $video->id }}">
+
+                                        <!-- video Preview -->
                                         <video-preview :video="{{ json_encode($video) }}"
                                             :preview-url="{{ json_encode($video->preview_url ?? '') }}"
                                             :mime-type="{{ json_encode($video->mime_type ?? '') }}"
                                             :is-owner="{{ json_encode(auth()->id() === $video->user_id) }}"
                                             :video-id="{{ $video->id }}">
                                         </video-preview>
-                                    </div>
 
-                                    <!-- video Info -->
-                                    <div class="p-4 space-y-4">
-                                        <div>
-                                            <h3 class="text-lg font-semibold text-gray-900">{{ $video->title }}</h3>
-                                            <p class="mt-1 text-sm text-gray-600">{{ $video->description }}</p>
-                                        </div>
-                                        <!-- video card -->
-                                        <div class="space-y-2">
-                                            <ul class="space-y-1 text-sm text-gray-600">
-                                                <li class="flex items-center">
-                                                    <svg class="w-5 h-5 mr-2 text-gray-500" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M9 7h6m0 10H9m12-7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h14a2 2 0 002-2v-6z" />
-                                                    </svg>
-                                                    <span><strong>Type:</strong>
-                                                        {{ strtoupper(pathinfo($video->original_name, PATHINFO_EXTENSION)) }}</span>
-                                                </li>
-                                                <li class="flex items-center">
-                                                    <svg class="w-5 h-5 mr-2 text-gray-500" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    <span><strong>Size:</strong>
-                                                        {{ number_format($video->file_size / 1024 / 1024, 2) }}
-                                                        MB</span>
-                                                </li>
-                                                <li class="flex items-center">
-                                                    <svg class="w-5 h-5 mr-2 text-gray-500" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                                    </svg>
-                                                    <span><strong>Uploaded:</strong>
-                                                        {{ $video->created_at->diffForHumans() }}</span>
-                                                </li>
-                                            </ul>
-                                        </div>
 
-                                        <!-- file Controls -->
-                                        <div class="flex justify-between items-center mt-4 space-x-2">
-                                            <button onclick="openShareModal({{ $video->id }})"
-                                                class="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                                Share Video
-                                            </button>
-                                            <button onclick="confirmDelete({{ $video->id }})"
-                                                class="flex-1 px-4 py-2 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                                Delete Video
-                                            </button>
-                                        </div>
 
-                                        <!-- Share Modal -->
-                                        <div id="share-modal-{{ $video->id }}"
-                                            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                                            <div
-                                                class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                                                <div class="mt-3">
-                                                    <h3 class="text-lg font-medium text-gray-900">Share Video</h3>
-                                                    <div class="mt-2">
-                                                        <div id="share-form-{{ $video->id }}">
-                                                            <form onsubmit="confirmShare(event, {{ $video->id }})">
-                                                                <div class="mt-4">
-                                                                    <label for="email-{{ $video->id }}"
-                                                                        class="block text-sm font-medium text-gray-700">Email</label>
-                                                                    <input type="email"
-                                                                        id="email-{{ $video->id }}" required
-                                                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                                                </div>
+                                        <div class="p-4 space-y-4">
+                                            <!-- video title -->
+                                            <div>
+                                                <h3 class="text-lg font-semibold text-gray-900">{{ $video->title }}</h3>
+                                                <p class="mt-1 text-sm text-gray-600">{{ $video->description }}</p>
+                                            </div>
+                                            <!-- video info -->
+                                            <video-info :video="{{ json_encode($video) }}"
+                                                :mime-type="{{ json_encode($video->mime_type ?? '') }}">
+                                            </video-info>
 
-                                                                <div class="mt-4">
-                                                                    <label for="expires-{{ $video->id }}"
-                                                                        class="block text-sm font-medium text-gray-700">Select
-                                                                        Expiry Time</label>
-
-                                                                    <!-- Preset buttons -->
-                                                                    <div class="grid grid-cols-2 gap-2 mt-2">
-                                                                        <button type="button"
-                                                                            onclick="setExpiryPreset({{ $video->id }}, 3)"
-                                                                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                            3 Hours
-                                                                        </button>
-                                                                        <button type="button"
-                                                                            onclick="setExpiryPreset({{ $video->id }}, 12)"
-                                                                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                            12 Hours
-                                                                        </button>
-                                                                        <button type="button"
-                                                                            onclick="setExpiryPreset({{ $video->id }}, 24)"
-                                                                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                            1 Day
-                                                                        </button>
-                                                                        <button type="button"
-                                                                            onclick="setExpiryPreset({{ $video->id }}, 168)"
-                                                                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                            7 Days
-                                                                        </button>
-                                                                    </div>
-
-                                                                    <!-- Custom date picker -->
-                                                                    <div class="mt-3">
-                                                                        <label
-                                                                            class="block text-sm font-medium text-gray-700">Custom
-                                                                            Expiry Time</label>
-                                                                        <input type="datetime-local"
-                                                                            id="expires-{{ $video->id }}" required
-                                                                            min="{{ now()->format('Y-m-d\TH:i') }}"
-                                                                            max="{{ now()->addDays(7)->format('Y-m-d\TH:i') }}"
+                                            <!-- Share Modal -->
+                                            <div id="share-modal-{{ $video->id }}"
+                                                class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                                                <div
+                                                    class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                                                    <div class="mt-3">
+                                                        <h3 class="text-lg font-medium text-gray-900">Share Video</h3>
+                                                        <div class="mt-2">
+                                                            <div id="share-form-{{ $video->id }}">
+                                                                <form
+                                                                    onsubmit="confirmShare(event, {{ $video->id }})">
+                                                                    <div class="mt-4">
+                                                                        <label for="email-{{ $video->id }}"
+                                                                            class="block text-sm font-medium text-gray-700">Email</label>
+                                                                        <input type="email"
+                                                                            id="email-{{ $video->id }}" required
                                                                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                                                        <p class="mt-1 text-sm text-gray-500">
-                                                                            Note: Maximum allowed duration is 7 days.
-                                                                        </p>
-
                                                                     </div>
-                                                                </div>
 
-                                                                <div class="mt-4 flex justify-end space-x-3">
-                                                                    <button type="button"
-                                                                        onclick="closeShareModal({{ $video->id }})"
-                                                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                                        Cancel
-                                                                    </button>
-                                                                    <button type="submit"
-                                                                        class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                                                        Next
-                                                                    </button>
-                                                                </div>
-                                                            </form>
-                                                        </div>
+                                                                    <div class="mt-4">
+                                                                        <label for="expires-{{ $video->id }}"
+                                                                            class="block text-sm font-medium text-gray-700">Select
+                                                                            Expiry Time</label>
 
-                                                        <div id="share-confirm-{{ $video->id }}" class="hidden">
-                                                            <div class="mt-4">
-                                                                <h4 class="text-lg font-medium text-gray-900 mb-4">
-                                                                    Confirm Share Details</h4>
-
-                                                                <div class="bg-gray-50 rounded-lg p-4 mb-4">
-                                                                    <div class="mb-2">
-                                                                        <span
-                                                                            class="text-sm font-medium text-gray-500">Recipient
-                                                                            Email:</span>
-                                                                        <span id="confirm-email-{{ $video->id }}"
-                                                                            class="ml-2 text-gray-900"></span>
-                                                                    </div>
-                                                                    <div class="mb-2">
-                                                                        <span
-                                                                            class="text-sm font-medium text-gray-500">Access
-                                                                            Expires:</span>
-                                                                        <span id="confirm-expires-{{ $video->id }}"
-                                                                            class="ml-2 text-gray-900"></span>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div
-                                                                    class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-                                                                    <div class="flex">
-                                                                        <div class="flex-shrink-0">
-                                                                            <svg class="h-5 w-5 text-yellow-400"
-                                                                                viewBox="0 0 20 20"
-                                                                                fill="currentColor">
-                                                                                <path fill-rule="evenodd"
-                                                                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                                                                    clip-rule="evenodd" />
-                                                                            </svg>
+                                                                        <!-- Preset buttons -->
+                                                                        <div class="grid grid-cols-2 gap-2 mt-2">
+                                                                            <button type="button"
+                                                                                onclick="setExpiryPreset({{ $video->id }}, 3)"
+                                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                                3 Hours
+                                                                            </button>
+                                                                            <button type="button"
+                                                                                onclick="setExpiryPreset({{ $video->id }}, 12)"
+                                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                                12 Hours
+                                                                            </button>
+                                                                            <button type="button"
+                                                                                onclick="setExpiryPreset({{ $video->id }}, 24)"
+                                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                                1 Day
+                                                                            </button>
+                                                                            <button type="button"
+                                                                                onclick="setExpiryPreset({{ $video->id }}, 168)"
+                                                                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                                7 Days
+                                                                            </button>
                                                                         </div>
-                                                                        <div class="ml-3">
-                                                                            <p class="text-sm text-yellow-700">
-                                                                                Please verify the email address
-                                                                                carefully. The file will be accessible
-                                                                                only to this email address.
+
+                                                                        <!-- Custom date picker -->
+                                                                        <div class="mt-3">
+                                                                            <label
+                                                                                class="block text-sm font-medium text-gray-700">Custom
+                                                                                Expiry Time</label>
+                                                                            <input type="datetime-local"
+                                                                                id="expires-{{ $video->id }}"
+                                                                                required
+                                                                                min="{{ now()->format('Y-m-d\TH:i') }}"
+                                                                                max="{{ now()->addDays(7)->format('Y-m-d\TH:i') }}"
+                                                                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                                                            <p class="mt-1 text-sm text-gray-500">
+                                                                                Note: Maximum allowed duration is 7
+                                                                                days.
                                                                             </p>
+
                                                                         </div>
                                                                     </div>
-                                                                </div>
 
-                                                                <div class="flex justify-end space-x-3">
-                                                                    <button type="button"
-                                                                        onclick="backToShareForm({{ $video->id }})"
-                                                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                                        Back
-                                                                    </button>
-                                                                    <button type="button"
-                                                                        onclick="executeShare({{ $video->id }})"
-                                                                        class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                                                        Confirm & Share
-                                                                    </button>
+                                                                    <div class="mt-4 flex justify-end space-x-3">
+                                                                        <button type="button"
+                                                                            onclick="closeShareModal({{ $video->id }})"
+                                                                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                                            Cancel
+                                                                        </button>
+                                                                        <button type="submit"
+                                                                            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                                            Next
+                                                                        </button>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+
+                                                            <div id="share-confirm-{{ $video->id }}" class="hidden">
+                                                                <div class="mt-4">
+                                                                    <h4 class="text-lg font-medium text-gray-900 mb-4">
+                                                                        Confirm Share Details</h4>
+
+                                                                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                                                                        <div class="mb-2">
+                                                                            <span
+                                                                                class="text-sm font-medium text-gray-500">Recipient
+                                                                                Email:</span>
+                                                                            <span
+                                                                                id="confirm-email-{{ $video->id }}"
+                                                                                class="ml-2 text-gray-900"></span>
+                                                                        </div>
+                                                                        <div class="mb-2">
+                                                                            <span
+                                                                                class="text-sm font-medium text-gray-500">Access
+                                                                                Expires:</span>
+                                                                            <span
+                                                                                id="confirm-expires-{{ $video->id }}"
+                                                                                class="ml-2 text-gray-900"></span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div
+                                                                        class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                                                                        <div class="flex">
+                                                                            <div class="flex-shrink-0">
+                                                                                <svg class="h-5 w-5 text-yellow-400"
+                                                                                    viewBox="0 0 20 20"
+                                                                                    fill="currentColor">
+                                                                                    <path fill-rule="evenodd"
+                                                                                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                                                                        clip-rule="evenodd" />
+                                                                                </svg>
+                                                                            </div>
+                                                                            <div class="ml-3">
+                                                                                <p class="text-sm text-yellow-700">
+                                                                                    Please verify the email address
+                                                                                    carefully. The file will be
+                                                                                    accessible
+                                                                                    only to this email address.
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div class="flex justify-end space-x-3">
+                                                                        <button type="button"
+                                                                            onclick="backToShareForm({{ $video->id }})"
+                                                                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                                            Back
+                                                                        </button>
+                                                                        <button type="button"
+                                                                            onclick="executeShare({{ $video->id }})"
+                                                                            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                                            Confirm & Share
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <!-- Shared List with Collapse -->
-                                        <div class="mt-4">
-                                            <button onclick="toggleShareList({{ $video->id }})"
-                                                class="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none">
-                                                <span>Shared With ({{ $video->shares->count() }})</span>
-                                                <svg id="share-arrow-{{ $video->id }}"
-                                                    class="w-5 h-5 transform transition-transform" fill="none"
-                                                    stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M19 9l-7 7-7-7" />
-                                                </svg>
-                                            </button>
-                                            <div id="shares-list-{{ $video->id }}" class="mt-2 space-y-2 hidden">
-                                                @foreach ($video->shares->sortByDesc('created_at') as $share)
-                                                    @if ($share->isEmailShare())
-                                                        <div class="flex items-center p-3 bg-gray-50 rounded-md border border-gray-200 hover:bg-gray-100 transition-colors"
-                                                            data-share-id="{{ $share->id }}">
-                                                            <!-- 削除ボタン -->
-                                                            <button
-                                                                onclick="deleteShare({{ $share->id }}, {{ $video->id }})"
-                                                                class="text-gray-400 hover:text-red-500 focus:outline-none mr-2"
-                                                                title="Remove from list">
-                                                                <svg class="w-4 h-4" fill="none"
-                                                                    stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round"
-                                                                        stroke-linejoin="round" stroke-width="2"
-                                                                        d="M6 18L18 6M6 6l12 12" />
-                                                                </svg>
-                                                            </button>
-
-                                                            <!-- メールとステータス情報 -->
-                                                            <div class="flex-grow flex items-center">
-                                                                <span
-                                                                    class="text-sm text-gray-800 font-medium mr-2">{{ $share->email }}</span>
-                                                                @if (!$share->is_active || $share->isExpired())
-                                                                    <span
-                                                                        class="text-xs text-red-500 font-medium whitespace-nowrap">
-                                                                        Expired:
-                                                                        {{ $share->expires_at->format('Y-m-d H:i') }}
-                                                                    </span>
-                                                                @else
-                                                                    <span
-                                                                        class="text-xs text-gray-500 whitespace-nowrap">
-                                                                        Expires:
-                                                                        {{ $share->expires_at->format('Y-m-d H:i') }}
-                                                                    </span>
-                                                                @endif
-                                                            </div>
-
-                                                            <!-- アクションボタン -->
-                                                            <div class="ml-3">
-                                                                @if (!$share->is_active || $share->isExpired())
-                                                                    <button
-                                                                        onclick="extendShareExpiry({{ $share->id }}, {{ $video->id }})"
-                                                                        class="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 focus:outline-none whitespace-nowrap">
-                                                                        <span class="flex items-center">
-                                                                            <svg class="w-3 h-3 mr-1" fill="none"
-                                                                                stroke="currentColor"
-                                                                                viewBox="0 0 24 24">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    stroke-width="2"
-                                                                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                            </svg>
-                                                                            Extend
-                                                                        </span>
-                                                                    </button>
-                                                                @else
-                                                                    <button
-                                                                        onclick="revokeShareAccess({{ $share->id }}, {{ $video->id }})"
-                                                                        class="px-3 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 focus:outline-none whitespace-nowrap">
-                                                                        <span class="flex items-center">
-                                                                            <svg class="w-3 h-3 mr-1" fill="none"
-                                                                                stroke="currentColor"
-                                                                                viewBox="0 0 24 24">
-                                                                                <path stroke-linecap="round"
-                                                                                    stroke-linejoin="round"
-                                                                                    stroke-width="2"
-                                                                                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                                                            </svg>
-                                                                            Revoke
-                                                                        </span>
-                                                                    </button>
-                                                                @endif
-                                                            </div>
-                                                        </div>
-                                                    @endif
-                                                @endforeach
-                                            </div>
-                                        </div>
-
-                                        <!-- Delete Confirmation Modal -->
-                                        <div id="delete-modal-{{ $video->id }}"
-                                            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                                            <div
-                                                class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                                                <div class="mt-3 text-center">
-                                                    <div
-                                                        class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                                                        <svg class="h-6 w-6 text-red-600" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                        </svg>
-                                                    </div>
-                                                    <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">
-                                                        Delete
-                                                        File</h3>
-                                                    <div class="mt-2 px-7 py-3">
-                                                        <p class="text-sm text-gray-500">
-                                                            Are you sure you want to delete this file? This action
-                                                            cannot be undone.
-                                                        </p>
-                                                    </div>
-                                                    <div class="items-center px-4 py-3">
-                                                        <button onclick="deleteVideo({{ $video->id }})"
-                                                            class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 mr-2">
-                                                            Delete
-                                                        </button>
-                                                        <button
-                                                            onclick="document.getElementById('delete-modal-{{ $video->id }}').classList.add('hidden')"
-                                                            class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
-                                                            Cancel
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Download Link Section -->
-                                        <div class="space-y-3">
-                                            @if ($video->url_expires_at && $video->url_expires_at->isFuture())
-                                                <div id="timer-{{ $video->id }}" class="text-sm text-gray-600">
-                                                    <div class="flex justify-between items-center">
-                                                        <p>Time remaining: <span
-                                                                class="text-indigo-600 font-medium"></span></p>
-                                                        <button onclick="revokeAccess({{ $video->id }})"
-                                                            class="px-3 py-1 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 focus:outline-none">
-                                                            Revoke URL
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div id="url-{{ $video->id }}" class="space-y-2">
-                                                    <div class="flex items-center gap-2">
-                                                        <input type="text" id="url-input-{{ $video->id }}"
-                                                            value="{{ $video->short_url ? route('stream.video', ['shortUrl' => $video->short_url]) : '' }}"
-                                                            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                            readonly>
-                                                        <button onclick="copyUrl({{ $video->id }})"
-                                                            class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                                                            Copy
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            @else
-                                                <!-- Generate/Extend Button -->
-                                                <button id="generate-btn-{{ $video->id }}"
-                                                    onclick="showExpiryOptions({{ $video->id }})"
-                                                    class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                                    {{ $video->url_expires_at && $video->url_expires_at->isPast() ? 'Extend Access' : 'Generate Download Link' }}
+                                            <!-- Shared List with Collapse -->
+                                            <div class="mt-4">
+                                                <button onclick="toggleShareList({{ $video->id }})"
+                                                    class="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none">
+                                                    <span>Shared With ({{ $video->shares->count() }})</span>
+                                                    <svg id="share-arrow-{{ $video->id }}"
+                                                        class="w-5 h-5 transform transition-transform" fill="none"
+                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                    </svg>
                                                 </button>
-                                            @endif
-                                        </div>
-
-                                        <!-- Expiry Options Modal (常に存在) -->
-                                        <div id="expiry-modal-{{ $video->id }}"
-                                            class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                                            <div
-                                                class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                                                <div class="mt-3">
-                                                    <h3 class="text-lg font-medium text-gray-900">
-                                                        {{ $video->url_expires_at && $video->url_expires_at->isPast() ? 'Extend Access Period' : 'Select Expiry Time' }}
-                                                    </h3>
-                                                    <div class="mt-4 space-y-3">
-                                                        <!-- Preset buttons -->
-                                                        <div class="grid grid-cols-2 gap-2">
-                                                            @php
-                                                                $presets = [
-                                                                    3 => '3 Hours',
-                                                                    12 => '12 Hours',
-                                                                    24 => '1 Day',
-                                                                    168 => '7 Days',
-                                                                ];
-                                                            @endphp
-
-                                                            @foreach ($presets as $hours => $label)
+                                                <div id="shares-list-{{ $video->id }}"
+                                                    class="mt-2 space-y-2 hidden">
+                                                    @foreach ($video->shares->sortByDesc('created_at') as $share)
+                                                        @if ($share->isEmailShare())
+                                                            <div class="flex items-center p-3 bg-gray-50 rounded-md border border-gray-200 hover:bg-gray-100 transition-colors"
+                                                                data-share-id="{{ $share->id }}">
+                                                                <!-- 削除ボタン -->
                                                                 <button
-                                                                    onclick="generateWithPreset({{ $video->id }}, {{ $hours }})"
-                                                                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
-                                                                    {{ $label }}
+                                                                    onclick="deleteShare({{ $share->id }}, {{ $video->id }})"
+                                                                    class="text-gray-400 hover:text-red-500 focus:outline-none mr-2"
+                                                                    title="Remove from list">
+                                                                    <svg class="w-4 h-4" fill="none"
+                                                                        stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round"
+                                                                            stroke-linejoin="round" stroke-width="2"
+                                                                            d="M6 18L18 6M6 6l12 12" />
+                                                                    </svg>
                                                                 </button>
-                                                            @endforeach
 
+                                                                <!-- メールとステータス情報 -->
+                                                                <div class="flex-grow flex items-center">
+                                                                    <span
+                                                                        class="text-sm text-gray-800 font-medium mr-2">{{ $share->email }}</span>
+                                                                    @if (!$share->is_active || $share->isExpired())
+                                                                        <span
+                                                                            class="text-xs text-red-500 font-medium whitespace-nowrap">
+                                                                            Expired:
+                                                                            {{ $share->expires_at->format('Y-m-d H:i') }}
+                                                                        </span>
+                                                                    @else
+                                                                        <span
+                                                                            class="text-xs text-gray-500 whitespace-nowrap">
+                                                                            Expires:
+                                                                            {{ $share->expires_at->format('Y-m-d H:i') }}
+                                                                        </span>
+                                                                    @endif
+                                                                </div>
+
+                                                                <!-- アクションボタン -->
+                                                                <div class="ml-3">
+                                                                    @if (!$share->is_active || $share->isExpired())
+                                                                        <button
+                                                                            onclick="extendShareExpiry({{ $share->id }}, {{ $video->id }})"
+                                                                            class="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 focus:outline-none whitespace-nowrap">
+                                                                            <span class="flex items-center">
+                                                                                <svg class="w-3 h-3 mr-1"
+                                                                                    fill="none"
+                                                                                    stroke="currentColor"
+                                                                                    viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round"
+                                                                                        stroke-linejoin="round"
+                                                                                        stroke-width="2"
+                                                                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                                </svg>
+                                                                                Extend
+                                                                            </span>
+                                                                        </button>
+                                                                    @else
+                                                                        <button
+                                                                            onclick="revokeShareAccess({{ $share->id }}, {{ $video->id }})"
+                                                                            class="px-3 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 focus:outline-none whitespace-nowrap">
+                                                                            <span class="flex items-center">
+                                                                                <svg class="w-3 h-3 mr-1"
+                                                                                    fill="none"
+                                                                                    stroke="currentColor"
+                                                                                    viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round"
+                                                                                        stroke-linejoin="round"
+                                                                                        stroke-width="2"
+                                                                                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                                                                </svg>
+                                                                                Revoke
+                                                                            </span>
+                                                                        </button>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                            </div>
+
+                                            <!-- Delete Confirmation Modal -->
+                                            <div id="delete-modal-{{ $video->id }}"
+                                                class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                                                <div
+                                                    class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                                                    <div class="mt-3 text-center">
+                                                        <div
+                                                            class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                                                            <svg class="h-6 w-6 text-red-600" fill="none"
+                                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                            </svg>
                                                         </div>
-
-                                                        <!-- Custom datetime picker -->
-                                                        <div class="mt-4">
-                                                            <label
-                                                                class="block text-sm font-medium text-gray-700">Custom
-                                                                Expiry Time</label>
-                                                            <input type="datetime-local"
-                                                                id="custom-expiry-{{ $video->id }}"
-                                                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                                                min="{{ now()->format('Y-m-d\TH:i') }}"
-                                                                max="{{ now()->addDays(7)->format('Y-m-d\TH:i') }}">
-                                                            <p class="mt-1 text-sm text-gray-500">
-                                                                Note: Maximum allowed duration is 7 days.
+                                                        <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">
+                                                            Delete
+                                                            File</h3>
+                                                        <div class="mt-2 px-7 py-3">
+                                                            <p class="text-sm text-gray-500">
+                                                                Are you sure you want to delete this file? This action
+                                                                cannot be undone.
                                                             </p>
-                                                            <button onclick="generateWithCustom({{ $video->id }})"
-                                                                class="mt-2 w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
-                                                                Set Custom Time
+                                                        </div>
+                                                        <div class="items-center px-4 py-3">
+                                                            <button onclick="deleteVideo({{ $video->id }})"
+                                                                class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 mr-2">
+                                                                Delete
+                                                            </button>
+                                                            <button
+                                                                onclick="document.getElementById('delete-modal-{{ $video->id }}').classList.add('hidden')"
+                                                                class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                                                                Cancel
                                                             </button>
                                                         </div>
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                                                        <!-- Cancel button -->
-                                                        <button onclick="closeExpiryModal({{ $video->id }})"
-                                                            class="mt-4 w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
-                                                            Cancel
-                                                        </button>
+                                            <!-- Download Link Section -->
+                                            <div class="space-y-3">
+                                                @if ($video->url_expires_at && $video->url_expires_at->isFuture())
+                                                    <div id="timer-{{ $video->id }}"
+                                                        class="text-sm text-gray-600">
+                                                        <div class="flex justify-between items-center">
+                                                            <p>Time remaining: <span
+                                                                    class="text-indigo-600 font-medium"></span></p>
+                                                            <button onclick="revokeAccess({{ $video->id }})"
+                                                                class="px-3 py-1 text-sm font-medium text-red-600 border border-red-600 rounded-md hover:bg-red-50 focus:outline-none">
+                                                                Revoke URL
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div id="url-{{ $video->id }}" class="space-y-2">
+                                                        <div class="flex items-center gap-2">
+                                                            <input type="text" id="url-input-{{ $video->id }}"
+                                                                value="{{ $video->short_url ? route('stream.video', ['shortUrl' => $video->short_url]) : '' }}"
+                                                                class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                                readonly>
+                                                            <button onclick="copyUrl({{ $video->id }})"
+                                                                class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                                                Copy
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                @else
+                                                    <!-- Generate/Extend Button -->
+                                                    <button id="generate-btn-{{ $video->id }}"
+                                                        onclick="showExpiryOptions({{ $video->id }})"
+                                                        class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                        {{ $video->url_expires_at && $video->url_expires_at->isPast() ? 'Extend Access' : 'Generate Download Link' }}
+                                                    </button>
+                                                @endif
+                                            </div>
+
+                                            <!-- Expiry Options Modal (常に存在) -->
+                                            <div id="expiry-modal-{{ $video->id }}"
+                                                class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                                                <div
+                                                    class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                                                    <div class="mt-3">
+                                                        <h3 class="text-lg font-medium text-gray-900">
+                                                            {{ $video->url_expires_at && $video->url_expires_at->isPast() ? 'Extend Access Period' : 'Select Expiry Time' }}
+                                                        </h3>
+                                                        <div class="mt-4 space-y-3">
+                                                            <!-- Preset buttons -->
+                                                            <div class="grid grid-cols-2 gap-2">
+                                                                @php
+                                                                    $presets = [
+                                                                        3 => '3 Hours',
+                                                                        12 => '12 Hours',
+                                                                        24 => '1 Day',
+                                                                        168 => '7 Days',
+                                                                    ];
+                                                                @endphp
+
+                                                                @foreach ($presets as $hours => $label)
+                                                                    <button
+                                                                        onclick="generateWithPreset({{ $video->id }}, {{ $hours }})"
+                                                                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                                                        {{ $label }}
+                                                                    </button>
+                                                                @endforeach
+
+                                                            </div>
+
+                                                            <!-- Custom datetime picker -->
+                                                            <div class="mt-4">
+                                                                <label
+                                                                    class="block text-sm font-medium text-gray-700">Custom
+                                                                    Expiry Time</label>
+                                                                <input type="datetime-local"
+                                                                    id="custom-expiry-{{ $video->id }}"
+                                                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                                                    min="{{ now()->format('Y-m-d\TH:i') }}"
+                                                                    max="{{ now()->addDays(7)->format('Y-m-d\TH:i') }}">
+                                                                <p class="mt-1 text-sm text-gray-500">
+                                                                    Note: Maximum allowed duration is 7 days.
+                                                                </p>
+                                                                <button
+                                                                    onclick="generateWithCustom({{ $video->id }})"
+                                                                    class="mt-2 w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
+                                                                    Set Custom Time
+                                                                </button>
+                                                            </div>
+
+                                                            <!-- Cancel button -->
+                                                            <button onclick="closeExpiryModal({{ $video->id }})"
+                                                                class="mt-4 w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                                                                Cancel
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>
@@ -782,9 +753,9 @@
                         ${isExpired
                             ? '<span class="text-xs text-red-500">Expired</span>'
                             : `<button onclick="revokeShareAccess(${share.id})"
-                                                                                                                                                                                                                                                        class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
-                                                                                                                                                                                                                                                        Revoke Access
-                                                                                                                                                                                                                                                       </button>`}
+                                                                                                                                                                                                                                                                                                                                                    class="px-2 py-1 text-xs text-red-600 hover:text-red-800 focus:outline-none">
+                                                                                                                                                                                                                                                                                                                                                    Revoke Access
+                                                                                                                                                                                                                                                                                                                                                   </button>`}
                     </div>
                 </div>
             `;

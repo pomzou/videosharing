@@ -228,7 +228,11 @@ class VideoFileController extends Controller
         try {
             $videos = VideoFile::where('user_id', Auth::id())
                 ->orderBy('created_at', 'desc')
-                ->get();
+                ->get()
+                ->map(function ($video) {
+                    $video->formatted_created_at = $video->created_at->diffForHumans();
+                    return $video;
+                });
 
             foreach ($videos as $video) {
                 try {
